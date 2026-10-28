@@ -1,5 +1,38 @@
 import api from './api.js';
 import { MOCK_FREELANCERS, getFreelancerById as findMockFreelancerById } from '../data/mockFreelancers.js';
+import { CATEGORY_MAP } from '../constants/categories.js';
+
+/**
+ * The live API returns raw profile fields; the UI also reads display fields that only the
+ * mock data carries (workHistory, languages, education, ...). Fill any that are missing
+ * so pages never crash on `.map` of undefined or render blank values.
+ */
+const normalizeFreelancer = (f) => {
+  if (!f) return f;
+  const name = f.name || 'Freelancer';
+  return {
+    ...f,
+    name,
+    avatarInitials:
+      f.avatarInitials ||
+      name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('') ||
+      'F',
+    categoryName: f.categoryName || CATEGORY_MAP[f.category]?.title || f.category || '',
+    overview: f.overview || '',
+    bio: f.bio || '',
+    location: f.location || 'Remote',
+    availability: f.availability || 'Available',
+    skills: Array.isArray(f.skills) ? f.skills : [],
+    languages: Array.isArray(f.languages) ? f.languages : [],
+    education: f.education || 'Not specified',
+    workHistory: Array.isArray(f.workHistory) ? f.workHistory : [],
+    portfolio: (Array.isArray(f.portfolio) ? f.portfolio : []).map((item, idx) => ({
+      ...item,
+      id: item.id || item._id || `portfolio-${idx}`,
+      skills: Array.isArray(item.skills) ? item.skills : []
+    }))
+  };
+};
 
 /**
  * Freelancer Service Layer
@@ -12,7 +45,7 @@ export const freelancerService = {
       const res = await api.get('/freelancers', { params });
       return {
         success: true,
-        data: res.data,
+        data: Array.isArray(res.data) ? res.data.map(normalizeFreelancer) : res.data,
         total: res.meta?.total || res.data?.length || 0,
         page: res.meta?.page || 1,
         totalPages: res.meta?.totalPages || 1,
@@ -102,7 +135,7 @@ export const freelancerService = {
       const res = await api.get(`/freelancers/${id}`);
       return {
         success: true,
-        data: res.data
+        data: normalizeFreelancer(res.data)
       };
     } catch (error) {
       console.warn(`[Freelancer Service] Live API error fetching ${id}, checking fallback:`, error.message);
@@ -130,7 +163,7 @@ export const freelancerService = {
       const res = await api.get('/freelancers', { params: { limit, sortBy: 'relevance' } });
       return {
         success: true,
-        data: res.data?.slice(0, limit) || []
+        data: (res.data?.slice(0, limit) || []).map(normalizeFreelancer)
       };
     } catch (err) {
       return {
