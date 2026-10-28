@@ -35,7 +35,7 @@ const normalizeJob = (job) => {
   return {
     ...job,
     projectType: job.projectType || 'Fixed-Price',
-    skills: job.skills || [],
+    skills: Array.isArray(job.skills) ? job.skills : [],
     budgetDisplay,
     postedTime: job.postedTime || timeAgo(job.postedDate),
     estimatedDuration: job.estimatedDuration || 'Not specified',
