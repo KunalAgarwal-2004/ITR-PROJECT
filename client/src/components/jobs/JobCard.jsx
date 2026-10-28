@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Clock, DollarSign, Briefcase, MapPin } from 'lucide-react';
+import { Clock, Briefcase, MapPin } from 'lucide-react';
 import Button from '../common/Button';
 
 export const JobCard = ({ job }) => {

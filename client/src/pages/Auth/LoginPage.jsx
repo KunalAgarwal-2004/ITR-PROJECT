@@ -241,15 +241,16 @@ export const LoginPage = () => {
         isOpen={forgotModalOpen}
         onClose={() => setForgotModalOpen(false)}
         title="Reset Account Password"
-        description="Enter your account email to receive a password recovery link."
+        description="Password recovery is handled by the WorkBridge support team."
         size="sm"
       >
         {forgotSent ? (
           <div className="text-center py-4">
             <CheckCircle className="w-10 h-10 text-brand-500 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-content-primary">Reset instructions sent!</p>
+            <p className="text-sm font-semibold text-content-primary">Request noted</p>
             <p className="text-xs text-content-muted mt-1 mb-4">
-              If an account exists for {forgotEmail}, instructions have been dispatched.
+              Automatic reset emails aren't available yet. Please contact WorkBridge support from {forgotEmail} and
+              we'll help you regain access to your account.
             </p>
             <Button
               variant="primary"
@@ -286,7 +287,7 @@ export const LoginPage = () => {
                 Cancel
               </Button>
               <Button type="submit" variant="primary" size="sm" fullWidth>
-                Send Link
+                Continue
               </Button>
             </div>
           </form>

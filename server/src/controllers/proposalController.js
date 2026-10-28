@@ -1,6 +1,7 @@
 import { Proposal } from '../models/Proposal.js';
 import { Job } from '../models/Job.js';
 import { Project } from '../models/Project.js';
+import { FreelancerProfile } from '../models/FreelancerProfile.js';
 import { AppError } from '../utils/appError.js';
 import { successResponse } from '../utils/apiResponse.js';
 
@@ -122,14 +123,37 @@ export const getProposalsByJob = async (req, res, next) => {
     }
 
     const proposals = await Proposal.find({ job: jobId })
-      .populate('freelancer', 'name email avatar bio rating totalJobsCompleted')
+      .populate('freelancer', 'name email avatar bio')
       .sort({ createdAt: -1 })
       .lean();
+
+    // Rating and track record live on FreelancerProfile, not User: attach them per bidder
+    const freelancerIds = proposals.map(p => p.freelancer?._id).filter(Boolean);
+    const profiles = await FreelancerProfile.find({ user: { $in: freelancerIds } })
+      .select('user title rating reviewsCount totalJobsCompleted')
+      .lean();
+    const profileByUser = new Map(profiles.map(pr => [pr.user.toString(), pr]));
+
+    const data = proposals.map(p => {
+      const profile = p.freelancer ? profileByUser.get(p.freelancer._id.toString()) : null;
+      return {
+        ...p,
+        freelancerProfile: profile
+          ? {
+              id: profile._id,
+              title: profile.title,
+              rating: profile.rating,
+              reviewsCount: profile.reviewsCount,
+              totalJobsCompleted: profile.totalJobsCompleted
+            }
+          : null
+      };
+    });
 
     return successResponse(res, {
       statusCode: 200,
       message: 'Job proposals retrieved',
-      data: proposals
+      data
     });
   } catch (error) {
     next(error);
@@ -160,8 +184,13 @@ export const acceptProposal = async (req, res, next) => {
       return next(new AppError('Unauthorized: Only the client who posted the job can accept proposals', 403));
     }
 
-    if (proposal.status === 'accepted') {
-      return next(new AppError('This proposal has already been accepted', 400));
+    if (proposal.status !== 'pending') {
+      return next(new AppError(`Only pending proposals can be accepted (this one is ${proposal.status})`, 400));
+    }
+
+    // A job can only have one contract: block accepting a second proposal
+    if (job.status !== 'open') {
+      return next(new AppError(`This job is no longer open (status: ${job.status})`, 400));
     }
 
     // 1. Update proposal status
@@ -228,8 +257,16 @@ export const rejectProposal = async (req, res, next) => {
       return next(new AppError(`Proposal with id '${id}' not found`, 404));
     }
 
+    if (!proposal.job) {
+      return next(new AppError('Associated job for this proposal not found', 404));
+    }
+
     if (proposal.job.client.toString() !== req.user._id.toString()) {
       return next(new AppError('Unauthorized: Only the job poster can decline proposals', 403));
+    }
+
+    if (proposal.status !== 'pending') {
+      return next(new AppError(`Only pending proposals can be rejected (this one is ${proposal.status})`, 400));
     }
 
     proposal.status = 'rejected';
@@ -263,14 +300,18 @@ export const withdrawProposal = async (req, res, next) => {
       return next(new AppError('Unauthorized: You can only withdraw your own proposals', 403));
     }
 
-    if (proposal.status === 'accepted') {
-      return next(new AppError('Cannot withdraw a proposal that has already been accepted', 400));
+    if (proposal.status !== 'pending') {
+      return next(new AppError(`Only pending proposals can be withdrawn (this one is ${proposal.status})`, 400));
     }
 
     proposal.status = 'withdrawn';
     await proposal.save();
 
-    await Job.findByIdAndUpdate(proposal.job, { $inc: { proposalsCount: -1 } });
+    // Guarded decrement so the count can never go negative
+    await Job.updateOne(
+      { _id: proposal.job, proposalsCount: { $gt: 0 } },
+      { $inc: { proposalsCount: -1 } }
+    );
 
     return successResponse(res, {
       statusCode: 200,

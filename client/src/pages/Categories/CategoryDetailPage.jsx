@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, Briefcase, ChevronRight, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import PageContainer from '../../components/common/PageContainer';
 import FreelancerCard from '../../components/freelancers/FreelancerCard';
@@ -10,6 +10,8 @@ import CardSkeleton from '../../components/common/CardSkeleton';
 import { CATEGORY_MAP } from '../../constants/categories';
 import freelancerService from '../../services/freelancerService';
 import jobService from '../../services/jobService';
+import SampleDataNotice from '../../components/common/SampleDataNotice';
+import { useCtaPaths } from '../../hooks/useCtaPaths';
 
 export const CategoryDetailPage = () => {
   const { slug } = useParams();
@@ -20,6 +22,10 @@ export const CategoryDetailPage = () => {
   const [jobs, setJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+  const [isSample, setIsSample] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const navigate = useNavigate();
+  const cta = useCtaPaths();
 
   useEffect(() => {
     if (!category) return;
@@ -38,6 +44,7 @@ export const CategoryDetailPage = () => {
         if (isMounted) {
           setFreelancers(freelancerRes?.data || []);
           setJobs(jobRes?.data || []);
+          setIsSample(Boolean(freelancerRes?.isSample || jobRes?.isSample));
         }
       } catch (err) {
         if (isMounted) {
@@ -56,7 +63,7 @@ export const CategoryDetailPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [category, slug]);
+  }, [category, slug, reloadKey]);
 
   if (!category) {
     return (
@@ -136,7 +143,7 @@ export const CategoryDetailPage = () => {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => window.location.reload()}
+            onClick={() => setReloadKey((k) => k + 1)}
             className="gap-1.5"
           >
             <RefreshCw className="w-3.5 h-3.5" /> Retry
@@ -174,14 +181,14 @@ export const CategoryDetailPage = () => {
           </button>
         </div>
 
-        <Link
-          to={activeTab === 'freelancers' ? `/auth/register?role=client` : `/auth/register?role=freelancer`}
-        >
+        <Link to={activeTab === 'freelancers' ? cta.hire : cta.postJob}>
           <Button variant="outline" size="sm">
             {activeTab === 'freelancers' ? 'Hire in this Category' : 'Post a Job Here'}
           </Button>
         </Link>
       </div>
+
+      <SampleDataNotice show={isSample} />
 
       {/* Content depending on tab */}
       {isLoading ? (
@@ -194,7 +201,7 @@ export const CategoryDetailPage = () => {
             title="No talent listed in this category yet"
             description="Check back shortly or browse other categories."
             actionLabel="Browse All Freelancers"
-            onAction={() => window.location.href = '/freelancers'}
+            onAction={() => navigate('/freelancers')}
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -209,7 +216,7 @@ export const CategoryDetailPage = () => {
             title="No open jobs in this category right now"
             description="Be the first to post a job in this category."
             actionLabel="Post a Job"
-            onAction={() => window.location.href = '/auth/register?role=client'}
+            onAction={() => navigate(cta.postJob)}
           />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

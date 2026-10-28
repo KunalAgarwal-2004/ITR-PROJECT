@@ -114,8 +114,8 @@ export const verifyCsrfOrigin = (req, res, next) => {
   }
 
   // Check Origin or Referer header if using cookies
-  const origin = req.headers.origin || req.headers.referer;
-  if (!origin) {
+  const rawOrigin = req.headers.origin || req.headers.referer;
+  if (!rawOrigin) {
     // Direct server-to-server or curl requests without origin pass to normal auth
     return next();
   }
@@ -129,7 +129,15 @@ export const verifyCsrfOrigin = (req, res, next) => {
     'http://localhost:5000'
   ];
 
-  const isAllowed = allowedOrigins.some(allowed => origin.startsWith(allowed));
+  // Referer is a full URL, so reduce either header to its origin, then match exactly:
+  // a prefix check would let e.g. http://localhost:5173.evil.com through
+  let origin;
+  try {
+    origin = new URL(rawOrigin).origin;
+  } catch {
+    return next(new AppError('Cross-Site Request Forgery (CSRF) blocked. Invalid origin.', 403));
+  }
+  const isAllowed = allowedOrigins.includes(origin);
   if (!isAllowed) {
     return next(new AppError('Cross-Site Request Forgery (CSRF) blocked. Invalid origin.', 403));
   }

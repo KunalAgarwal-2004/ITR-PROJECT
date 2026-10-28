@@ -24,7 +24,7 @@ const proposalSchema = new mongoose.Schema(
     bidAmount: {
       type: Number,
       required: [true, 'Bid amount is required'],
-      min: [5, 'Bid amount must be at least $5']
+      min: [5, 'Bid amount must be at least 5 (USD)']
     },
     estimatedDuration: {
       type: String,

@@ -43,7 +43,7 @@ export const MOCK_FREELANCERS = [
         rating: 5.0,
         feedback: 'Elena delivered extraordinary work on our LLM pipeline. Her knowledge of prompt engineering and vector caching saved us weeks of latency testing.',
         date: 'October 2024',
-        budget: '$8,200',
+        budget: 8200,
         projectType: 'Fixed-Price'
       },
       {
@@ -53,7 +53,7 @@ export const MOCK_FREELANCERS = [
         rating: 4.9,
         feedback: 'Highly reliable and deeply technical. Addressed our HIPAA compliance requirements for vector data seamlessly.',
         date: 'August 2024',
-        budget: '$4,500',
+        budget: 4500,
         projectType: 'Fixed-Price'
       }
     ]
@@ -98,7 +98,7 @@ export const MOCK_FREELANCERS = [
         rating: 5.0,
         feedback: 'Marcus is easily one of the best full-stack engineers we have hired. He diagnosed bottleneck queries in our PostgreSQL database and improved page load times by 65%.',
         date: 'November 2024',
-        budget: '$14,500',
+        budget: 14500,
         projectType: 'Hourly'
       }
     ]
@@ -137,7 +137,7 @@ export const MOCK_FREELANCERS = [
         rating: 5.0,
         feedback: 'Sofia has a brilliant eye for information density and typographic balance. Our users immediately praised the new dashboard clarity.',
         date: 'September 2024',
-        budget: '$6,800',
+        budget: 6800,
         projectType: 'Fixed-Price'
       }
     ]
@@ -176,7 +176,7 @@ export const MOCK_FREELANCERS = [
         rating: 4.9,
         feedback: 'Super tactical, data-driven, and prompt. David provided a step-by-step engineering roadmap that solved all our indexing blocks.',
         date: 'October 2024',
-        budget: '$3,800',
+        budget: 3800,
         projectType: 'Fixed-Price'
       }
     ]
@@ -215,7 +215,7 @@ export const MOCK_FREELANCERS = [
         rating: 5.0,
         feedback: 'Exceptional technical clarity. Claire tested our code snippets herself and uncovered two undocumented edge cases before publishing.',
         date: 'August 2024',
-        budget: '$4,200',
+        budget: 4200,
         projectType: 'Fixed-Price'
       }
     ]
@@ -254,7 +254,7 @@ export const MOCK_FREELANCERS = [
         rating: 4.9,
         feedback: 'Arjun handled our product launch support flawlessly. Calm, organized, and meticulous with communication.',
         date: 'July 2024',
-        budget: '$3,100',
+        budget: 3100,
         projectType: 'Hourly'
       }
     ]
@@ -293,7 +293,7 @@ export const MOCK_FREELANCERS = [
         rating: 5.0,
         feedback: 'Rebecca built an institutional-grade financial model that impressed our lead investors during due diligence. Worth every dollar.',
         date: 'September 2024',
-        budget: '$5,500',
+        budget: 5500,
         projectType: 'Fixed-Price'
       }
     ]
@@ -332,7 +332,7 @@ export const MOCK_FREELANCERS = [
         rating: 5.0,
         feedback: 'Jonathan identified key indemnification risks that two previous counsels overlooked. Pragmatic, fast, and highly professional.',
         date: 'October 2024',
-        budget: '$3,600',
+        budget: 3600,
         projectType: 'Fixed-Price'
       }
     ]
@@ -371,7 +371,7 @@ export const MOCK_FREELANCERS = [
         rating: 5.0,
         feedback: 'Kavita filled four critical senior engineering roles within 45 days. Her candidate vetting was top notch.',
         date: 'August 2024',
-        budget: '$7,200',
+        budget: 7200,
         projectType: 'Fixed-Price'
       }
     ]
@@ -410,7 +410,7 @@ export const MOCK_FREELANCERS = [
         rating: 5.0,
         feedback: 'Henrik provided clear, stamped engineering calculations ahead of schedule. City inspectors approved the permit set on first submission.',
         date: 'September 2024',
-        budget: '$4,800',
+        budget: 4800,
         projectType: 'Fixed-Price'
       }
     ]

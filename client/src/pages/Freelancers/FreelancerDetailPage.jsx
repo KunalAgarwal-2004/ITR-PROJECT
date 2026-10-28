@@ -1,36 +1,24 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import {
-  Star,
-  MapPin,
-  CheckCircle2,
-  Briefcase,
-  GraduationCap,
-  Languages,
-  Clock,
-  ArrowLeft,
-  Mail,
-  ShieldCheck,
-  Check
-} from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Star, MapPin, ShieldCheck } from 'lucide-react';
 import PageContainer from '../../components/common/PageContainer';
 import Button from '../../components/common/Button';
-import Modal from '../../components/common/Modal';
-import FeedbackBanner from '../../components/common/FeedbackBanner';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
+import SampleDataNotice from '../../components/common/SampleDataNotice';
 import freelancerService from '../../services/freelancerService';
 import { useAuth } from '../../hooks/useAuth';
+import { useCtaPaths } from '../../hooks/useCtaPaths';
+import { formatCurrency, formatLabel } from '../../utils/formatters';
 
 export const FreelancerDetailPage = () => {
   const { id } = useParams();
-  const { isAuthenticated, isClient } = useAuth();
+  const { isClient, isFreelancer } = useAuth();
+  const cta = useCtaPaths();
+  const navigate = useNavigate();
   const [freelancer, setFreelancer] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const [inviteSent, setInviteSent] = useState(false);
-  const [message, setMessage] = useState('');
-  const [successBanner, setSuccessBanner] = useState('');
+  const [isSample, setIsSample] = useState(false);
 
   useEffect(() => {
     const fetchFreelancer = async () => {
@@ -38,6 +26,7 @@ export const FreelancerDetailPage = () => {
       try {
         const res = await freelancerService.getFreelancerById(id);
         setFreelancer(res.data);
+        setIsSample(Boolean(res.isSample));
       } catch (err) {
         console.error('Failed to load profile:', err);
       } finally {
@@ -63,22 +52,13 @@ export const FreelancerDetailPage = () => {
           title="Freelancer Profile Not Found"
           description={`The requested profile '${id}' does not exist or has been removed.`}
           actionLabel="Return to Freelancers Directory"
-          onAction={() => window.location.href = '/freelancers'}
+          onAction={() => navigate('/freelancers')}
         />
       </PageContainer>
     );
   }
 
-  const handleSendInvite = (e) => {
-    e.preventDefault();
-    setInviteSent(true);
-    setTimeout(() => {
-      setInviteModalOpen(false);
-      setInviteSent(false);
-      setMessage('');
-      setSuccessBanner(`Your project invitation was sent to ${freelancer.name}! They will be notified immediately.`);
-    }, 1200);
-  };
+  const firstName = freelancer.name.split(' ')[0];
 
   return (
     <PageContainer
@@ -92,15 +72,7 @@ export const FreelancerDetailPage = () => {
         </nav>
       }
     >
-      {successBanner && (
-        <FeedbackBanner
-          type="success"
-          title="Invitation Sent"
-          message={successBanner}
-          onDismiss={() => setSuccessBanner('')}
-          className="mb-6"
-        />
-      )}
+      <SampleDataNotice show={isSample} />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Main Profile Body */}
@@ -125,10 +97,10 @@ export const FreelancerDetailPage = () => {
               </div>
 
               <div className="text-left sm:text-right w-full sm:w-auto p-3 sm:p-0 bg-surface-warm sm:bg-transparent rounded-md border sm:border-0 border-border">
-                <span className="text-2xl font-bold text-content-primary">${freelancer.hourlyRate}</span>
-                <span className="text-xs text-content-muted block">USD / hr</span>
+                <span className="text-2xl font-bold text-content-primary">{formatCurrency(freelancer.hourlyRate)}</span>
+                <span className="text-xs text-content-muted block">per hour</span>
                 <span className="inline-block px-2.5 py-0.5 mt-2 rounded-full text-xs font-semibold bg-brand-50 text-brand-700 border border-brand-200">
-                  {freelancer.availability}
+                  {formatLabel(freelancer.availability)}
                 </span>
               </div>
             </div>
@@ -139,17 +111,17 @@ export const FreelancerDetailPage = () => {
                 <span className="text-xs text-content-muted block uppercase">Client Rating</span>
                 <div className="flex items-center justify-center gap-1 mt-1">
                   <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  <span className="text-base font-bold text-content-primary">{freelancer.rating}</span>
+                  <span className="text-base font-bold text-content-primary">{freelancer.rating || 'New'}</span>
                 </div>
-                <span className="text-[11px] text-content-muted">({freelancer.reviewsCount} reviews)</span>
+                <span className="text-[11px] text-content-muted">({freelancer.reviewsCount || 0} reviews)</span>
               </div>
 
               <div>
                 <span className="text-xs text-content-muted block uppercase">Completed Jobs</span>
                 <span className="text-base font-bold text-content-primary block mt-1">
-                  {freelancer.totalJobsCompleted}
+                  {freelancer.totalJobsCompleted || 0}
                 </span>
-                <span className="text-[11px] text-content-muted">100% on-time</span>
+                <span className="text-[11px] text-content-muted">on WorkBridge</span>
               </div>
 
               <div>
@@ -167,22 +139,37 @@ export const FreelancerDetailPage = () => {
           {/* About / Overview */}
           <div className="bg-surface-white border border-border rounded-md p-6 sm:p-8 shadow-card">
             <h2 className="text-lg font-bold text-content-primary mb-3">Professional Overview</h2>
-            <p className="text-sm text-content-primary leading-relaxed mb-4">
-              {freelancer.overview}
-            </p>
+            {freelancer.overview && (
+              <p className="text-sm text-content-primary leading-relaxed mb-4">
+                {freelancer.overview}
+              </p>
+            )}
             <p className="text-sm text-content-muted leading-relaxed">
-              {freelancer.bio}
+              {freelancer.bio || `${firstName} hasn't written a profile overview yet.`}
             </p>
           </div>
 
           {/* Portfolio Projects */}
           <div className="bg-surface-white border border-border rounded-md p-6 sm:p-8 shadow-card">
             <h2 className="text-lg font-bold text-content-primary mb-4">Featured Portfolio</h2>
+            {freelancer.portfolio.length === 0 && (
+              <p className="text-sm text-content-muted">No portfolio projects added yet.</p>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {freelancer.portfolio.map((item) => (
                 <div key={item.id} className="p-4 bg-surface-warm border border-border rounded-md">
                   <h3 className="text-sm font-bold text-content-primary mb-1">{item.title}</h3>
                   <p className="text-xs text-content-muted leading-relaxed mb-3">{item.description}</p>
+                  {item.link && (
+                    <a
+                      href={item.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-medium text-brand-600 hover:underline block mb-2"
+                    >
+                      View project
+                    </a>
+                  )}
                   <div className="flex flex-wrap gap-1">
                     {item.skills.map((s, idx) => (
                       <span key={idx} className="px-2 py-0.5 rounded-sm bg-white border border-border text-[11px] text-content-primary">
@@ -195,7 +182,8 @@ export const FreelancerDetailPage = () => {
             </div>
           </div>
 
-          {/* Work History & Reviews */}
+          {/* Work History & Reviews (only rendered when there is history to show) */}
+          {freelancer.workHistory.length > 0 && (
           <div className="bg-surface-white border border-border rounded-md p-6 sm:p-8 shadow-card">
             <h2 className="text-lg font-bold text-content-primary mb-4">Work History & Client Feedback</h2>
             <div className="divide-y divide-border">
@@ -214,39 +202,37 @@ export const FreelancerDetailPage = () => {
                     <span>&bull;</span>
                     <span>{history.date}</span>
                     <span>&bull;</span>
-                    <span className="font-medium text-content-primary">{history.budget} ({history.projectType})</span>
+                    <span className="font-medium text-content-primary">
+                      {formatCurrency(history.budget)} ({history.projectType})
+                    </span>
                   </div>
                 </div>
               ))}
             </div>
           </div>
+          )}
         </div>
 
         {/* Right Sidebar Details & Hire CTA */}
         <div className="lg:col-span-4 space-y-6">
           <div className="bg-surface-white border border-border rounded-md p-6 shadow-card sticky top-20">
-            <h3 className="text-base font-bold text-content-primary mb-4">Work with {freelancer.name.split(' ')[0]}</h3>
+            <h3 className="text-base font-bold text-content-primary mb-4">Work with {firstName}</h3>
 
-            <div className="space-y-3 mb-6">
-              <Button
-                variant="primary"
-                fullWidth
-                size="md"
-                onClick={() => setInviteModalOpen(true)}
-              >
-                Hire / Send Project Proposal
-              </Button>
-
-              <button
-                type="button"
-                onClick={() => setInviteModalOpen(true)}
-                className="w-full"
-              >
-                <Button variant="secondary" fullWidth size="md">
-                  Message Specialist
-                </Button>
-              </button>
-            </div>
+            {/* Hiring happens by posting a job that freelancers bid on; there is no direct
+                invite/messaging endpoint, so the CTA routes to the real flow for each role. */}
+            {!isFreelancer && (
+              <div className="space-y-3 mb-6">
+                <Link to={cta.postJob} className="block">
+                  <Button variant="primary" fullWidth size="md">
+                    {isClient ? 'Post a Job to Hire' : 'Sign Up to Hire'}
+                  </Button>
+                </Link>
+                <p className="text-[11px] text-content-muted leading-relaxed">
+                  Post your project and {firstName} can send you a proposal. You'll review bids and accept one from
+                  your Client Workspace.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-4 pt-4 border-t border-border text-xs text-content-muted">
               <div>
@@ -266,7 +252,7 @@ export const FreelancerDetailPage = () => {
 
               <div>
                 <span className="font-semibold text-content-primary block mb-1">Languages</span>
-                <p>{freelancer.languages.join(', ')}</p>
+                <p>{freelancer.languages.length > 0 ? freelancer.languages.join(', ') : 'Not specified'}</p>
               </div>
 
               <div>
@@ -278,55 +264,6 @@ export const FreelancerDetailPage = () => {
         </div>
       </div>
 
-      {/* Accessible Invitation Modal */}
-      <Modal
-        isOpen={inviteModalOpen}
-        onClose={() => setInviteModalOpen(false)}
-        title={`Invite ${freelancer.name} to a Project`}
-        description="Send a project brief or milestone specification."
-        size="md"
-      >
-        {inviteSent ? (
-          <div className="text-center py-6">
-            <div className="w-10 h-10 rounded-full bg-brand-50 border border-brand-200 text-brand-600 flex items-center justify-center mx-auto mb-2">
-              <Check className="w-5 h-5" />
-            </div>
-            <p className="text-sm font-bold text-content-primary">Invitation Sent!</p>
-            <p className="text-xs text-content-muted mt-1">{freelancer.name} has been notified.</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSendInvite} className="space-y-4">
-            <div>
-              <label className="block text-xs font-semibold text-content-primary mb-1">
-                Project Message
-              </label>
-              <textarea
-                rows={4}
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder={`Hi ${freelancer.name.split(' ')[0]}, I saw your profile and would love to discuss our project milestones...`}
-                required
-                className="w-full p-3 text-sm bg-surface-white border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                fullWidth
-                onClick={() => setInviteModalOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" size="sm" fullWidth>
-                Send Invitation
-              </Button>
-            </div>
-          </form>
-        )}
-      </Modal>
     </PageContainer>
   );
 };

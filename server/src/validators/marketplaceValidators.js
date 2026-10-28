@@ -9,18 +9,19 @@ export const updateFreelancerProfileSchema = z.object({
     category: z.string().min(2, 'Category slug is required'),
     subCategory: z.string().optional(),
     bio: z.string().min(20, 'Bio must be at least 20 characters').max(2000),
-    hourlyRate: z.coerce.number().min(5, 'Hourly rate must be at least $5').max(1000),
+    hourlyRate: z.coerce.number().min(5, 'Hourly rate must be at least 5 (USD)').max(1000, 'Hourly rate cannot exceed 1000 (USD)'),
     skills: z.array(z.string().trim()).min(1, 'At least one skill is required'),
-    experienceLevel: z.enum(['entry', 'intermediate', 'expert']).optional().default('intermediate'),
-    availability: z.enum(['full-time', 'part-time', 'contract']).optional().default('contract'),
-    location: z.string().optional().default('Remote'),
+    // No defaults here: a PUT that omits a field must leave the stored value unchanged
+    experienceLevel: z.enum(['entry', 'intermediate', 'expert']).optional(),
+    availability: z.enum(['full-time', 'part-time', 'contract']).optional(),
+    location: z.string().optional(),
     avatar: z.string().url('Avatar must be a valid URL').optional().or(z.literal('')),
     portfolio: z.array(z.object({
       title: z.string().min(2),
       description: z.string().optional(),
       link: z.string().optional(),
       imageUrl: z.string().optional()
-    })).optional().default([])
+    })).optional()
   })
 });
 
@@ -56,7 +57,8 @@ export const updateJobSchema = z.object({
     budgetMax: z.coerce.number().min(0).optional(),
     experienceLevel: z.enum(['entry', 'intermediate', 'expert']).optional(),
     skills: z.array(z.string().trim()).optional(),
-    status: z.enum(['open', 'in-progress', 'completed', 'cancelled']).optional(),
+    // Owners may only close (cancel) or re-open a posting; other states come from the contract flow
+    status: z.enum(['open', 'cancelled']).optional(),
     deadline: z.string().optional()
   })
 });
@@ -68,7 +70,7 @@ export const submitProposalSchema = z.object({
   body: z.object({
     jobId: z.string().min(1, 'Job ID is required'),
     coverLetter: z.string().min(20, 'Cover letter must be at least 20 characters').max(3000),
-    bidAmount: z.coerce.number().min(5, 'Bid amount must be at least $5'),
+    bidAmount: z.coerce.number().min(5, 'Bid amount must be at least 5 (USD)'),
     estimatedDuration: z.string().min(1, 'Estimated timeline is required')
   })
 });

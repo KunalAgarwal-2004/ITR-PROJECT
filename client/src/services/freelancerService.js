@@ -1,4 +1,4 @@
-import api from './api.js';
+import api, { isServerUnavailable } from './api.js';
 import { MOCK_FREELANCERS, getFreelancerById as findMockFreelancerById } from '../data/mockFreelancers.js';
 import { CATEGORY_MAP } from '../constants/categories.js';
 
@@ -7,7 +7,7 @@ import { CATEGORY_MAP } from '../constants/categories.js';
  * mock data carries (workHistory, languages, education, ...). Fill any that are missing
  * so pages never crash on `.map` of undefined or render blank values.
  */
-const normalizeFreelancer = (f) => {
+export const normalizeFreelancer = (f) => {
   if (!f) return f;
   const name = f.name || 'Freelancer';
   return {
@@ -45,15 +45,16 @@ export const freelancerService = {
       const res = await api.get('/freelancers', { params });
       return {
         success: true,
-        data: Array.isArray(res.data) ? res.data.map(normalizeFreelancer) : res.data,
-        total: res.meta?.total || res.data?.length || 0,
+        data: Array.isArray(res.data) ? res.data.map(normalizeFreelancer) : [],
+        total: res.meta?.total || (Array.isArray(res.data) ? res.data.length : 0),
         page: res.meta?.page || 1,
         totalPages: res.meta?.totalPages || 1,
         limit: res.meta?.limit || 6
       };
     } catch (error) {
-      // Offline fallback using mock data if server is unreachable
-      console.warn('[Freelancer Service] Live API unreachable, using local fallback:', error.message);
+      // Only an unreachable/failing server falls back to sample data; real 4xx errors surface
+      if (!isServerUnavailable(error)) throw error;
+      console.warn('[Freelancer Service] Live API unreachable, using local sample data:', error.message);
       const {
         search = '',
         category = 'all',
@@ -121,11 +122,12 @@ export const freelancerService = {
 
       return {
         success: true,
-        data: paginatedData,
+        data: paginatedData.map(normalizeFreelancer),
         total,
         page: currentPage,
         totalPages,
-        limit
+        limit,
+        isSample: true
       };
     }
   },
@@ -138,12 +140,13 @@ export const freelancerService = {
         data: normalizeFreelancer(res.data)
       };
     } catch (error) {
-      console.warn(`[Freelancer Service] Live API error fetching ${id}, checking fallback:`, error.message);
-      const freelancer = findMockFreelancerById(id);
+      const freelancer = isServerUnavailable(error) ? findMockFreelancerById(id) : null;
       if (freelancer) {
+        console.warn(`[Freelancer Service] Live API unreachable, showing sample profile ${id}:`, error.message);
         return {
           success: true,
-          data: freelancer
+          data: normalizeFreelancer(freelancer),
+          isSample: true
         };
       }
       throw error;
@@ -166,9 +169,11 @@ export const freelancerService = {
         data: (res.data?.slice(0, limit) || []).map(normalizeFreelancer)
       };
     } catch (err) {
+      if (!isServerUnavailable(err)) throw err;
       return {
         success: true,
-        data: MOCK_FREELANCERS.slice(0, limit)
+        data: MOCK_FREELANCERS.slice(0, limit).map(normalizeFreelancer),
+        isSample: true
       };
     }
   }

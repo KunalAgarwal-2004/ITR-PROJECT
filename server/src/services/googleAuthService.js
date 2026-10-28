@@ -23,12 +23,12 @@ export const verifyGoogleIdToken = async (idToken) => {
     throw new AppError('Google ID token is required for verification', 400);
   }
 
-  // Strictly isolate simulation tokens to non-production test suites
-  // Production will unconditionally reject mock tokens
+  // Simulation tokens are accepted ONLY by the automated test suite (NODE_ENV=test).
+  // In development they would let anyone sign in as any email, so they are rejected there too.
   if (idToken.startsWith('mock-google-token-')) {
-    if (ENV.NODE_ENV === 'production') {
+    if (ENV.NODE_ENV !== 'test') {
       throw new AppError(
-        'Mock tokens are strictly prohibited in production. Real Google authentication is required.',
+        'Mock Google tokens are only accepted in the test environment. Real Google authentication is required.',
         401
       );
     }

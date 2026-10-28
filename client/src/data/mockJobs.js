@@ -9,10 +9,8 @@ export const MOCK_JOBS = [
     category: 'ai-services',
     categoryName: 'AI Services',
     projectType: 'Fixed-Price',
-    budgetDisplay: '$5,000 - $7,000',
     budgetMin: 5000,
     budgetMax: 7000,
-    hourlyRate: null,
     experienceLevel: 'Expert',
     estimatedDuration: '1 to 3 months',
     postedTime: '2 hours ago',
@@ -25,13 +23,13 @@ export const MOCK_JOBS = [
       location: 'San Francisco, CA, USA',
       rating: 4.9,
       reviewsCount: 19,
-      totalSpent: '$64,000+',
+      totalSpent: 64000,
       verifiedPayment: true
     },
     milestones: [
-      { id: 'm-1', title: 'Data Pipeline & Chunking Strategy', amount: '$2,000', status: 'Pending' },
-      { id: 'm-2', title: 'Vector Indexing & Evaluation Benchmark', amount: '$2,500', status: 'Pending' },
-      { id: 'm-3', title: 'Production API & Documentation', amount: '$1,500', status: 'Pending' }
+      { id: 'm-1', title: 'Data Pipeline & Chunking Strategy', amount: 2000, status: 'Pending' },
+      { id: 'm-2', title: 'Vector Indexing & Evaluation Benchmark', amount: 2500, status: 'Pending' },
+      { id: 'm-3', title: 'Production API & Documentation', amount: 1500, status: 'Pending' }
     ]
   },
   {
@@ -40,10 +38,8 @@ export const MOCK_JOBS = [
     category: 'development-it',
     categoryName: 'Development & IT',
     projectType: 'Hourly',
-    budgetDisplay: '$65 - $85 / hr',
     budgetMin: 65,
     budgetMax: 85,
-    hourlyRate: '$65 - $85/hr',
     experienceLevel: 'Intermediate',
     estimatedDuration: '3 to 6 months',
     postedTime: '4 hours ago',
@@ -56,7 +52,7 @@ export const MOCK_JOBS = [
       location: 'Chicago, IL, USA',
       rating: 5.0,
       reviewsCount: 32,
-      totalSpent: '$120,000+',
+      totalSpent: 120000,
       verifiedPayment: true
     },
     milestones: []
@@ -67,10 +63,8 @@ export const MOCK_JOBS = [
     category: 'design-creative',
     categoryName: 'Design & Creative',
     projectType: 'Fixed-Price',
-    budgetDisplay: '$3,500',
     budgetMin: 3500,
     budgetMax: 3500,
-    hourlyRate: null,
     experienceLevel: 'Expert',
     estimatedDuration: 'Less than 1 month',
     postedTime: '1 day ago',
@@ -83,12 +77,12 @@ export const MOCK_JOBS = [
       location: 'Seattle, WA, USA',
       rating: 4.8,
       reviewsCount: 12,
-      totalSpent: '$28,000+',
+      totalSpent: 28000,
       verifiedPayment: true
     },
     milestones: [
-      { id: 'm-4', title: 'Design Audit & Color/Type Tokens', amount: '$1,200', status: 'Pending' },
-      { id: 'm-5', title: 'Component Library & Auto-Layout Kit', amount: '$2,300', status: 'Pending' }
+      { id: 'm-4', title: 'Design Audit & Color/Type Tokens', amount: 1200, status: 'Pending' },
+      { id: 'm-5', title: 'Component Library & Auto-Layout Kit', amount: 2300, status: 'Pending' }
     ]
   },
   {
@@ -97,10 +91,8 @@ export const MOCK_JOBS = [
     category: 'sales-marketing',
     categoryName: 'Sales & Marketing',
     projectType: 'Fixed-Price',
-    budgetDisplay: '$2,800',
     budgetMin: 2800,
     budgetMax: 2800,
-    hourlyRate: null,
     experienceLevel: 'Expert',
     estimatedDuration: 'Less than 1 month',
     postedTime: '1 day ago',
@@ -113,12 +105,12 @@ export const MOCK_JOBS = [
       location: 'London, UK',
       rating: 4.95,
       reviewsCount: 8,
-      totalSpent: '$15,000+',
+      totalSpent: 15000,
       verifiedPayment: true
     },
     milestones: [
-      { id: 'm-6', title: 'Site Crawl & Defect Report', amount: '$1,000', status: 'Pending' },
-      { id: 'm-7', title: 'Implementation Verification & Validation', amount: '$1,800', status: 'Pending' }
+      { id: 'm-6', title: 'Site Crawl & Defect Report', amount: 1000, status: 'Pending' },
+      { id: 'm-7', title: 'Implementation Verification & Validation', amount: 1800, status: 'Pending' }
     ]
   },
   {
@@ -127,10 +119,8 @@ export const MOCK_JOBS = [
     category: 'writing-translation',
     categoryName: 'Writing & Translation',
     projectType: 'Hourly',
-    budgetDisplay: '$50 - $70 / hr',
     budgetMin: 50,
     budgetMax: 70,
-    hourlyRate: '$50 - $70/hr',
     experienceLevel: 'Intermediate',
     estimatedDuration: '1 to 3 months',
     postedTime: '2 days ago',
@@ -143,7 +133,7 @@ export const MOCK_JOBS = [
       location: 'Boston, MA, USA',
       rating: 4.9,
       reviewsCount: 22,
-      totalSpent: '$45,000+',
+      totalSpent: 45000,
       verifiedPayment: true
     },
     milestones: []
@@ -154,10 +144,8 @@ export const MOCK_JOBS = [
     category: 'admin-support',
     categoryName: 'Admin & Support',
     projectType: 'Hourly',
-    budgetDisplay: '$30 - $45 / hr',
     budgetMin: 30,
     budgetMax: 45,
-    hourlyRate: '$30 - $45/hr',
     experienceLevel: 'Intermediate',
     estimatedDuration: 'More than 6 months',
     postedTime: '2 days ago',
@@ -170,7 +158,7 @@ export const MOCK_JOBS = [
       location: 'Austin, TX, USA',
       rating: 4.75,
       reviewsCount: 15,
-      totalSpent: '$32,000+',
+      totalSpent: 32000,
       verifiedPayment: true
     },
     milestones: []
@@ -181,10 +169,8 @@ export const MOCK_JOBS = [
     category: 'finance-accounting',
     categoryName: 'Finance & Accounting',
     projectType: 'Fixed-Price',
-    budgetDisplay: '$4,000',
     budgetMin: 4000,
     budgetMax: 4000,
-    hourlyRate: null,
     experienceLevel: 'Expert',
     estimatedDuration: 'Less than 1 month',
     postedTime: '3 days ago',
@@ -197,12 +183,12 @@ export const MOCK_JOBS = [
       location: 'Denver, CO, USA',
       rating: 5.0,
       reviewsCount: 6,
-      totalSpent: '$19,000+',
+      totalSpent: 19000,
       verifiedPayment: true
     },
     milestones: [
-      { id: 'm-8', title: 'Historical Financials Reconciliation', amount: '$1,500', status: 'Pending' },
-      { id: 'm-9', title: '5-Year Operating Model & VC Summary', amount: '$2,500', status: 'Pending' }
+      { id: 'm-8', title: 'Historical Financials Reconciliation', amount: 1500, status: 'Pending' },
+      { id: 'm-9', title: '5-Year Operating Model & VC Summary', amount: 2500, status: 'Pending' }
     ]
   },
   {
@@ -211,10 +197,8 @@ export const MOCK_JOBS = [
     category: 'legal',
     categoryName: 'Legal',
     projectType: 'Fixed-Price',
-    budgetDisplay: '$2,500',
     budgetMin: 2500,
     budgetMax: 2500,
-    hourlyRate: null,
     experienceLevel: 'Expert',
     estimatedDuration: 'Less than 1 month',
     postedTime: '3 days ago',
@@ -227,12 +211,12 @@ export const MOCK_JOBS = [
       location: 'New York, NY, USA',
       rating: 4.88,
       reviewsCount: 14,
-      totalSpent: '$52,000+',
+      totalSpent: 52000,
       verifiedPayment: true
     },
     milestones: [
-      { id: 'm-10', title: 'MSA & SLA Revision with Redlines', amount: '$1,500', status: 'Pending' },
-      { id: 'm-11', title: 'Final Clean Documents & Execution Formats', amount: '$1,000', status: 'Pending' }
+      { id: 'm-10', title: 'MSA & SLA Revision with Redlines', amount: 1500, status: 'Pending' },
+      { id: 'm-11', title: 'Final Clean Documents & Execution Formats', amount: 1000, status: 'Pending' }
     ]
   },
   {
@@ -241,10 +225,8 @@ export const MOCK_JOBS = [
     category: 'hr-training',
     categoryName: 'HR & Training',
     projectType: 'Fixed-Price',
-    budgetDisplay: '$3,000',
     budgetMin: 3000,
     budgetMax: 3000,
-    hourlyRate: null,
     experienceLevel: 'Intermediate',
     estimatedDuration: '1 to 2 months',
     postedTime: '4 days ago',
@@ -257,12 +239,12 @@ export const MOCK_JOBS = [
       location: 'Toronto, Canada',
       rating: 4.95,
       reviewsCount: 11,
-      totalSpent: '$38,000+',
+      totalSpent: 38000,
       verifiedPayment: true
     },
     milestones: [
-      { id: 'm-12', title: 'Leveling Matrix & Expectations Guide', amount: '$1,500', status: 'Pending' },
-      { id: 'm-13', title: 'Interview Rubrics & Interviewer Training Deck', amount: '$1,500', status: 'Pending' }
+      { id: 'm-12', title: 'Leveling Matrix & Expectations Guide', amount: 1500, status: 'Pending' },
+      { id: 'm-13', title: 'Interview Rubrics & Interviewer Training Deck', amount: 1500, status: 'Pending' }
     ]
   },
   {
@@ -271,10 +253,8 @@ export const MOCK_JOBS = [
     category: 'engineering-architecture',
     categoryName: 'Engineering & Architecture',
     projectType: 'Fixed-Price',
-    budgetDisplay: '$4,200',
     budgetMin: 4200,
     budgetMax: 4200,
-    hourlyRate: null,
     experienceLevel: 'Expert',
     estimatedDuration: '1 to 2 months',
     postedTime: '5 days ago',
@@ -287,12 +267,12 @@ export const MOCK_JOBS = [
       location: 'Atlanta, GA, USA',
       rating: 5.0,
       reviewsCount: 9,
-      totalSpent: '$41,000+',
+      totalSpent: 41000,
       verifiedPayment: true
     },
     milestones: [
-      { id: 'm-14', title: 'Architectural Shell & Core in Revit', amount: '$2,200', status: 'Pending' },
-      { id: 'm-15', title: 'MEP Integration & Clash Detection Report', amount: '$2,000', status: 'Pending' }
+      { id: 'm-14', title: 'Architectural Shell & Core in Revit', amount: 2200, status: 'Pending' },
+      { id: 'm-15', title: 'MEP Integration & Clash Detection Report', amount: 2000, status: 'Pending' }
     ]
   }
 ];

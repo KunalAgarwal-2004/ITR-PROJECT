@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Filter, X, SlidersHorizontal, ArrowUpDown, Star, MapPin } from 'lucide-react';
+import { X, SlidersHorizontal, AlertCircle } from 'lucide-react';
 import PageContainer from '../../components/common/PageContainer';
 import FreelancerCard from '../../components/freelancers/FreelancerCard';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/common/Pagination';
 import EmptyState from '../../components/common/EmptyState';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import CardSkeleton from '../../components/common/CardSkeleton';
 import Button from '../../components/common/Button';
 import { MARKETPLACE_CATEGORIES } from '../../constants/categories';
 import freelancerService from '../../services/freelancerService';
+import SampleDataNotice from '../../components/common/SampleDataNotice';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
+import { formatCurrency } from '../../utils/formatters';
+
+// Filter thresholds stay in USD (the API's unit); they are displayed in rupees
+const MAX_RATE_OPTIONS_USD = [25, 50, 75, 100, 150];
 
 const QUICK_SKILLS = [
   'React',
@@ -45,6 +50,24 @@ export const FreelancersPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [isSample, setIsSample] = useState(false);
+
+  // Typing updates `search` immediately; the API is only queried once typing pauses
+  const debouncedSearch = useDebouncedValue(search, 300);
+
+  // Re-sync filters when the URL changes from outside this page (header link, Back/Forward)
+  const paramsKey = searchParams.toString();
+  useEffect(() => {
+    setCategory(searchParams.get('category') || 'all');
+    setSearch(searchParams.get('search') || '');
+    setPage(parseInt(searchParams.get('page') || '1', 10));
+    setSortBy(searchParams.get('sort') || 'relevance');
+    setMaxRate(searchParams.get('maxRate') || '');
+    setAvailability(searchParams.get('availability') || 'all');
+    setMinRating(searchParams.get('minRating') || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey]);
 
   // Sync state to URL params
   const updateURLParams = (updated = {}) => {
@@ -72,9 +95,10 @@ export const FreelancersPage = () => {
     let isMounted = true;
     const fetchTalent = async () => {
       setIsLoading(true);
+      setLoadError('');
       try {
         const res = await freelancerService.getFreelancers({
-          search,
+          search: debouncedSearch,
           category,
           maxRate: maxRate ? Number(maxRate) : undefined,
           availability: availability !== 'all' ? availability : undefined,
@@ -84,13 +108,17 @@ export const FreelancersPage = () => {
           limit: 6
         });
         if (isMounted) {
-          setFreelancers(res.data);
+          setFreelancers(Array.isArray(res.data) ? res.data : []);
           setTotalItems(res.total);
           setTotalPages(res.totalPages);
+          setIsSample(Boolean(res.isSample));
         }
       } catch (err) {
         if (isMounted) {
           console.error('Failed to load freelancers:', err);
+          setFreelancers([]);
+          setTotalItems(0);
+          setLoadError(err.message || 'Unable to load freelancers right now.');
         }
       } finally {
         if (isMounted) {
@@ -104,7 +132,7 @@ export const FreelancersPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [search, category, maxRate, availability, minRating, sortBy, page]);
+  }, [debouncedSearch, category, maxRate, availability, minRating, sortBy, page]);
 
   const handleSearchSubmit = (val) => {
     setSearch(val);
@@ -226,7 +254,7 @@ export const FreelancersPage = () => {
 
         {/* Filter Controls (Collapsible on mobile, always visible on md+) */}
         <div className={`${filtersOpen ? 'block' : 'hidden'} md:block pt-3 border-t border-border`}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             {/* Category Select */}
             <div>
               <label className="block text-xs font-semibold text-content-muted uppercase mb-1">
@@ -249,7 +277,7 @@ export const FreelancersPage = () => {
             {/* Max Hourly Rate */}
             <div>
               <label className="block text-xs font-semibold text-content-muted uppercase mb-1">
-                Max Hourly Rate ($/hr)
+                Max Hourly Rate (₹/hr)
               </label>
               <select
                 value={maxRate}
@@ -261,10 +289,32 @@ export const FreelancersPage = () => {
                 className="w-full px-3 py-1.5 text-xs bg-surface-white border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 text-content-primary"
               >
                 <option value="">Any Hourly Rate</option>
-                <option value="50">Up to $50/hr</option>
-                <option value="75">Up to $75/hr</option>
-                <option value="100">Up to $100/hr</option>
-                <option value="150">Up to $150/hr</option>
+                {MAX_RATE_OPTIONS_USD.map((usd) => (
+                  <option key={usd} value={usd}>
+                    Up to {formatCurrency(usd)}/hr
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Availability */}
+            <div>
+              <label className="block text-xs font-semibold text-content-muted uppercase mb-1">
+                Availability
+              </label>
+              <select
+                value={availability}
+                onChange={(e) => {
+                  setAvailability(e.target.value);
+                  setPage(1);
+                  updateURLParams({ availability: e.target.value, page: 1 });
+                }}
+                className="w-full px-3 py-1.5 text-xs bg-surface-white border border-border rounded-md focus:outline-none focus:ring-1 focus:ring-brand-500 text-content-primary"
+              >
+                <option value="all">Any Availability</option>
+                <option value="full-time">Full-time</option>
+                <option value="part-time">Part-time</option>
+                <option value="contract">Contract</option>
               </select>
             </div>
 
@@ -309,6 +359,15 @@ export const FreelancersPage = () => {
           </div>
         </div>
       </div>
+
+      <SampleDataNotice show={isSample} />
+
+      {loadError && (
+        <div role="alert" className="mb-6 p-3 rounded-md bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+          <span>{loadError}</span>
+        </div>
+      )}
 
       {/* Results Header */}
       <div className="flex items-center justify-between mb-4 text-xs text-content-muted">

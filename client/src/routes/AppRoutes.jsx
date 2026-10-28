@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
 import HomePage from '../pages/Home/HomePage';
 import LoginPage from '../pages/Auth/LoginPage';
@@ -13,7 +13,14 @@ import FreelancerDetailPage from '../pages/Freelancers/FreelancerDetailPage';
 import ClientDashboardPage from '../pages/ClientDashboard/ClientDashboardPage';
 import FreelancerDashboardPage from '../pages/FreelancerDashboard/FreelancerDashboardPage';
 import NotFoundPage from '../pages/NotFound/NotFoundPage';
+import LegalPage from '../pages/Legal/LegalPage';
 import ProtectedRoute from './ProtectedRoute';
+
+// <Navigate to="/signup"> would drop the query string (e.g. ?role=freelancer); keep it
+const RedirectWithQuery = ({ to }) => {
+  const { search, hash } = useLocation();
+  return <Navigate to={`${to}${search}${hash}`} replace />;
+};
 
 export const AppRoutes = () => {
   return (
@@ -30,9 +37,12 @@ export const AppRoutes = () => {
 
         {/* Authentication Routes (Primary and Aliases) */}
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/auth/login" element={<Navigate to="/login" replace />} />
+        <Route path="/auth/login" element={<RedirectWithQuery to="/login" />} />
         <Route path="/signup" element={<RegisterPage />} />
-        <Route path="/auth/register" element={<Navigate to="/signup" replace />} />
+        <Route path="/auth/register" element={<RedirectWithQuery to="/signup" />} />
+
+        {/* Policies (footer links) */}
+        <Route path="/legal" element={<LegalPage />} />
 
         {/* Dashboard Routes with ProtectedRoute Guards */}
         <Route

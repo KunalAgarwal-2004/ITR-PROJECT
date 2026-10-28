@@ -2,6 +2,7 @@ import { FreelancerProfile } from '../models/FreelancerProfile.js';
 import { User } from '../models/User.js';
 import { AppError } from '../utils/appError.js';
 import { successResponse } from '../utils/apiResponse.js';
+import { escapeRegExp, queryString, parsePagination } from '../utils/queryHelpers.js';
 
 /**
  * @route   GET /api/freelancers
@@ -10,17 +11,15 @@ import { successResponse } from '../utils/apiResponse.js';
  */
 export const getFreelancers = async (req, res, next) => {
   try {
-    const {
-      search = '',
-      category = 'all',
-      minRate,
-      maxRate,
-      availability = 'all',
-      minRating,
-      sortBy = 'relevance',
-      page = 1,
-      limit = 6
-    } = req.query;
+    // Only plain string query values are honoured (blocks `?category[$ne]=` operator injection)
+    const search = queryString(req.query.search);
+    const category = queryString(req.query.category, 'all');
+    const minRate = queryString(req.query.minRate);
+    const maxRate = queryString(req.query.maxRate);
+    const availability = queryString(req.query.availability, 'all');
+    const minRating = queryString(req.query.minRating);
+    const sortBy = queryString(req.query.sortBy, 'relevance');
+    const { page, limit } = req.query;
 
     const query = {};
 
@@ -30,15 +29,16 @@ export const getFreelancers = async (req, res, next) => {
     }
 
     // 2. Hourly Rate Range
-    if (minRate || maxRate) {
-      query.hourlyRate = {};
-      if (minRate && !isNaN(Number(minRate))) query.hourlyRate.$gte = Number(minRate);
-      if (maxRate && !isNaN(Number(maxRate))) query.hourlyRate.$lte = Number(maxRate);
+    const rateFilter = {};
+    if (minRate && !isNaN(Number(minRate))) rateFilter.$gte = Number(minRate);
+    if (maxRate && !isNaN(Number(maxRate))) rateFilter.$lte = Number(maxRate);
+    if (Object.keys(rateFilter).length > 0) {
+      query.hourlyRate = rateFilter;
     }
 
     // 3. Availability Filter
     if (availability && availability !== 'all') {
-      query.availability = new RegExp(availability, 'i');
+      query.availability = new RegExp(`^${escapeRegExp(availability)}$`, 'i');
     }
 
     // 4. Rating Filter
@@ -48,12 +48,15 @@ export const getFreelancers = async (req, res, next) => {
 
     // 5. Search across title, bio, and skills
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search.trim(), 'i');
+      const searchRegex = new RegExp(escapeRegExp(search.trim()), 'i');
+      // Names live on the User model, so match them separately and include those profiles
+      const matchingUsers = await User.find({ name: searchRegex }).select('_id').lean();
       query.$or = [
         { title: searchRegex },
         { bio: searchRegex },
         { skills: { $in: [searchRegex] } },
-        { location: searchRegex }
+        { location: searchRegex },
+        { user: { $in: matchingUsers.map(u => u._id) } }
       ];
     }
 
@@ -78,9 +81,7 @@ export const getFreelancers = async (req, res, next) => {
         break;
     }
 
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, parseInt(limit, 10) || 6);
-    const skip = (pageNum - 1) * limitNum;
+    const { pageNum, limitNum, skip } = parsePagination(page, limit, 6);
 
     const total = await FreelancerProfile.countDocuments(query);
     const totalPages = Math.ceil(total / limitNum) || 1;
@@ -97,7 +98,6 @@ export const getFreelancers = async (req, res, next) => {
       id: f._id,
       userId: f.user?._id || f.user,
       name: f.user?.name || 'Freelancer',
-      email: f.user?.email,
       avatar: f.user?.avatar,
       title: f.title,
       category: f.category,
@@ -156,7 +156,6 @@ export const getFreelancerById = async (req, res, next) => {
       id: profile._id,
       userId: profile.user?._id || profile.user,
       name: profile.user?.name || 'Freelancer',
-      email: profile.user?.email,
       avatar: profile.user?.avatar,
       title: profile.title,
       category: profile.category,

@@ -55,8 +55,8 @@ const freelancerProfileSchema = new mongoose.Schema(
     hourlyRate: {
       type: Number,
       required: [true, 'Hourly rate is required'],
-      min: [5, 'Hourly rate must be at least $5'],
-      max: [1000, 'Hourly rate cannot exceed $1000']
+      min: [5, 'Hourly rate must be at least 5 (USD)'],
+      max: [1000, 'Hourly rate cannot exceed 1000 (USD)']
     },
     skills: {
       type: [String],

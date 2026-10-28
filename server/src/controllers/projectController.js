@@ -1,5 +1,6 @@
 import { Project } from '../models/Project.js';
 import { Job } from '../models/Job.js';
+import { FreelancerProfile } from '../models/FreelancerProfile.js';
 import { AppError } from '../utils/appError.js';
 import { successResponse } from '../utils/apiResponse.js';
 
@@ -51,8 +52,9 @@ export const getProjectById = async (req, res, next) => {
     }
 
     // Authorization: User must be either the client or freelancer on this contract
-    const isClient = project.client._id.toString() === req.user._id.toString();
-    const isFreelancer = project.freelancer._id.toString() === req.user._id.toString();
+    // Populated users may be null if an account was deleted
+    const isClient = project.client?._id?.toString() === req.user._id.toString();
+    const isFreelancer = project.freelancer?._id?.toString() === req.user._id.toString();
 
     if (!isClient && !isFreelancer) {
       return next(new AppError('Unauthorized: You are not a participant in this contract', 403));
@@ -91,6 +93,10 @@ export const submitMilestoneDeliverable = async (req, res, next) => {
     const milestone = project.milestones.id(milestoneId);
     if (!milestone) {
       return next(new AppError(`Milestone with id '${milestoneId}' not found on this project`, 404));
+    }
+
+    if (['completed', 'cancelled', 'disputed'].includes(project.status)) {
+      return next(new AppError(`Deliverables cannot be submitted on a ${project.status} project`, 400));
     }
 
     if (milestone.status === 'released') {
@@ -146,6 +152,11 @@ export const approveMilestone = async (req, res, next) => {
       return next(new AppError('This milestone has already been released', 400));
     }
 
+    // Funds are only released against delivered work
+    if (milestone.status !== 'submitted') {
+      return next(new AppError('This milestone has no submitted deliverable to approve yet', 400));
+    }
+
     milestone.status = 'released';
     milestone.releasedAt = new Date();
 
@@ -158,8 +169,9 @@ export const approveMilestone = async (req, res, next) => {
     const allReleased = project.milestones.every(m => m.status === 'released');
     if (allReleased) {
       project.status = 'completed';
-      // Mark job as completed
+      // Mark job as completed and credit the freelancer's completed-jobs count
       await Job.findByIdAndUpdate(project.job, { status: 'completed' });
+      await FreelancerProfile.updateOne({ user: project.freelancer }, { $inc: { totalJobsCompleted: 1 } });
     } else {
       project.status = 'active';
     }
@@ -198,13 +210,21 @@ export const fundEscrow = async (req, res, next) => {
       return next(new AppError('Unauthorized: Only the hiring client can fund escrow', 403));
     }
 
-    const fundingAmount = Number(amount) || project.totalAmount;
+    if (['completed', 'cancelled'].includes(project.status)) {
+      return next(new AppError(`Escrow cannot be funded on a ${project.status} project`, 400));
+    }
+
+    const fundingAmount = amount === undefined ? project.totalAmount : Number(amount);
+    if (!Number.isFinite(fundingAmount) || fundingAmount <= 0) {
+      return next(new AppError('Funding amount must be a positive number', 400));
+    }
+
     project.escrowAmount += fundingAmount;
     await project.save();
 
     return successResponse(res, {
       statusCode: 200,
-      message: `Escrow successfully funded with $${fundingAmount.toLocaleString()}`,
+      message: `Escrow successfully funded with ${fundingAmount.toLocaleString()} (USD)`,
       data: project
     });
   } catch (error) {

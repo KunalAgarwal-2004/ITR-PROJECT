@@ -1,6 +1,7 @@
 import React, { createContext, useState, useEffect } from 'react';
 import { USER_ROLES } from '../constants/roles';
 import authService from '../services/authService';
+import { AUTH_EXPIRED_EVENT } from '../services/api';
 
 export const AuthContext = createContext({
   user: null,
@@ -61,6 +62,13 @@ export const AuthProvider = ({ children }) => {
     return () => {
       isMounted = false;
     };
+  }, []);
+
+  // Any API call that comes back 401 means the server session is gone: reflect that in the UI
+  useEffect(() => {
+    const handleExpired = () => setUser(null);
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleExpired);
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired);
   }, []);
 
   const login = async (credentials) => {

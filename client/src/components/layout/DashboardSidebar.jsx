@@ -4,15 +4,23 @@ import {
   Briefcase,
   FileText,
   Users,
-  DollarSign,
+  IndianRupee,
   Settings,
   LogOut,
   FolderOpen
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 
 export const DashboardSidebar = ({ activeTab, onSelectTab }) => {
   const { user, isClient, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // Leave the protected dashboard after signing out instead of showing "Sign In Required"
+  const handleSignOut = async () => {
+    await logout();
+    navigate('/');
+  };
 
   const clientNav = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
@@ -26,7 +34,7 @@ export const DashboardSidebar = ({ activeTab, onSelectTab }) => {
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'proposals', label: 'My Bids', icon: FileText },
     { id: 'contracts', label: 'Contracts', icon: Briefcase },
-    { id: 'earnings', label: 'Earnings', icon: DollarSign },
+    { id: 'earnings', label: 'Earnings', icon: IndianRupee },
     { id: 'portfolio', label: 'Portfolio', icon: FolderOpen },
     { id: 'settings', label: 'Settings', icon: Settings }
   ];
@@ -57,6 +65,14 @@ export const DashboardSidebar = ({ activeTab, onSelectTab }) => {
               </button>
             );
           })}
+          <button
+            type="button"
+            onClick={handleSignOut}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Sign Out</span>
+          </button>
         </div>
       </div>
 
@@ -104,7 +120,8 @@ export const DashboardSidebar = ({ activeTab, onSelectTab }) => {
 
         <div className="pt-4 mt-6 border-t border-border">
           <button
-            onClick={logout}
+            type="button"
+            onClick={handleSignOut}
             className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md text-red-600 hover:bg-red-50 transition-colors font-medium text-left"
           >
             <LogOut className="w-4 h-4" />

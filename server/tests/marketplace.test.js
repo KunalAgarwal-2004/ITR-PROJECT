@@ -297,4 +297,42 @@ describe('Marketplace Business Features Integration Tests', () => {
     const milestone = res.body.data.milestones.find(m => m._id.toString() === testMilestoneId.toString());
     assert.equal(milestone.status, 'released');
   });
+
+  // --- 6. State-transition guards ---
+  it('PATCH /api/proposals/:id/accept should refuse to accept a proposal that is no longer pending', async () => {
+    const res = await request(app)
+      .patch(`/api/proposals/${submittedProposalId}/accept`)
+      .set('Cookie', clientCookie);
+    assert.equal(res.status, 400);
+  });
+
+  it('PATCH /api/proposals/:id/withdraw should refuse to withdraw an accepted proposal', async () => {
+    const res = await request(app)
+      .patch(`/api/proposals/${submittedProposalId}/withdraw`)
+      .set('Cookie', freelancerCookie);
+    assert.equal(res.status, 400);
+  });
+
+  it('POST /api/projects/:id/milestones/:mId/approve should refuse to release a milestone twice', async () => {
+    const res = await request(app)
+      .post(`/api/projects/${activatedProjectId}/milestones/${testMilestoneId}/approve`)
+      .set('Cookie', clientCookie);
+    assert.equal(res.status, 400);
+  });
+
+  it('POST /api/projects/:id/milestones/:mId/deliver should refuse deliverables on a completed project', async () => {
+    const res = await request(app)
+      .post(`/api/projects/${activatedProjectId}/milestones/${testMilestoneId}/deliver`)
+      .set('Cookie', freelancerCookie)
+      .send({ deliverableNote: 'Late extra delivery after the contract completed.' });
+    assert.equal(res.status, 400);
+  });
+
+  it('PUT /api/jobs/:id should lock a job once its contract has completed', async () => {
+    const res = await request(app)
+      .put(`/api/jobs/${createdJobId}`)
+      .set('Cookie', clientCookie)
+      .send({ title: 'Trying to edit a finished job posting' });
+    assert.equal(res.status, 400);
+  });
 });

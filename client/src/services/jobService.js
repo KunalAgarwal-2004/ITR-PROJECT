@@ -1,6 +1,6 @@
-import api from './api.js';
+import api, { isServerUnavailable } from './api.js';
 import { MOCK_JOBS, getJobById as findMockJobById } from '../data/mockJobs.js';
-import { formatCurrency } from '../utils/formatters.js';
+import { formatBudget } from '../utils/formatters.js';
 
 const timeAgo = (date) => {
   const ms = Date.now() - new Date(date).getTime();
@@ -16,38 +16,30 @@ const timeAgo = (date) => {
 /**
  * The live API returns raw job fields; the UI also reads display fields that only the
  * mock data carries. Fill any that are missing so pages never render blank values or crash.
+ * Applied to live and sample data alike, so amounts (stored in USD) are always shown in INR.
  */
-const normalizeJob = (job) => {
+export const normalizeJob = (job) => {
   if (!job) return job;
-  const isHourly = (job.projectType || '').toLowerCase().includes('hour');
-  const { budgetMin, budgetMax } = job;
-  let budgetDisplay = job.budgetDisplay;
-  if (!budgetDisplay) {
-    const suffix = isHourly ? '/hr' : '';
-    if (budgetMin != null && budgetMax != null && budgetMin !== budgetMax) {
-      budgetDisplay = `${formatCurrency(budgetMin)} - ${formatCurrency(budgetMax)}${suffix}`;
-    } else if (budgetMin != null || budgetMax != null) {
-      budgetDisplay = `${formatCurrency(budgetMin ?? budgetMax)}${suffix}`;
-    } else {
-      budgetDisplay = 'Budget not specified';
-    }
-  }
+  const projectType = job.projectType || 'Fixed-Price';
+  const isHourly = projectType.toLowerCase().includes('hour');
   return {
     ...job,
-    projectType: job.projectType || 'Fixed-Price',
+    id: job.id || job._id,
+    status: job.status || 'open',
+    projectType,
     skills: Array.isArray(job.skills) ? job.skills : [],
-    budgetDisplay,
+    budgetDisplay: formatBudget(job.budgetMin, job.budgetMax, isHourly),
     postedTime: job.postedTime || timeAgo(job.postedDate),
     estimatedDuration: job.estimatedDuration || 'Not specified',
     experienceLevel: job.experienceLevel || 'Any level',
-    milestones: job.milestones || [],
+    milestones: Array.isArray(job.milestones) ? job.milestones : [],
     client: {
       name: 'Verified Client',
       location: 'Not specified',
       rating: 'New',
       reviewsCount: 0,
-      totalSpent: '-',
-      ...job.client
+      totalSpent: null, // USD number when known; pages format it
+      ...(job.client && typeof job.client === 'object' ? job.client : {})
     }
   };
 };
@@ -61,16 +53,19 @@ export const jobService = {
   getJobs: async (params = {}) => {
     try {
       const res = await api.get('/jobs', { params });
+      const data = Array.isArray(res.data) ? res.data.map(normalizeJob) : [];
       return {
         success: true,
-        data: Array.isArray(res.data) ? res.data.map(normalizeJob) : res.data,
-        total: res.meta?.total || res.data?.length || 0,
+        data,
+        total: res.meta?.total || data.length,
         page: res.meta?.page || 1,
         totalPages: res.meta?.totalPages || 1,
         limit: res.meta?.limit || 6
       };
     } catch (error) {
-      console.warn('[Job Service] Live API unreachable, using local fallback:', error.message);
+      // Only an unreachable/failing server falls back to sample data; real 4xx errors surface
+      if (!isServerUnavailable(error)) throw error;
+      console.warn('[Job Service] Live API unreachable, using local sample data:', error.message);
       const {
         search = '',
         category = 'all',
@@ -138,11 +133,12 @@ export const jobService = {
 
       return {
         success: true,
-        data: paginatedData,
+        data: paginatedData.map(normalizeJob),
         total,
         page: currentPage,
         totalPages,
-        limit
+        limit,
+        isSample: true
       };
     }
   },
@@ -155,12 +151,13 @@ export const jobService = {
         data: normalizeJob(res.data)
       };
     } catch (error) {
-      console.warn(`[Job Service] Live API error fetching ${id}, checking fallback:`, error.message);
-      const job = findMockJobById(id);
+      const job = isServerUnavailable(error) ? findMockJobById(id) : null;
       if (job) {
+        console.warn(`[Job Service] Live API unreachable, showing sample job ${id}:`, error.message);
         return {
           success: true,
-          data: job
+          data: normalizeJob(job),
+          isSample: true
         };
       }
       throw error;
@@ -187,9 +184,11 @@ export const jobService = {
         data: (res.data?.slice(0, limit) || []).map(normalizeJob)
       };
     } catch (err) {
+      if (!isServerUnavailable(err)) throw err;
       return {
         success: true,
-        data: MOCK_JOBS.slice(0, limit)
+        data: MOCK_JOBS.slice(0, limit).map(normalizeJob),
+        isSample: true
       };
     }
   }

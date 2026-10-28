@@ -1,18 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import {
-  Clock,
-  DollarSign,
-  Briefcase,
-  MapPin,
-  Star,
-  ShieldCheck,
-  CheckCircle2,
-  Calendar,
-  AlertCircle,
-  Check,
-  Layers
-} from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { Clock, MapPin, Star, ShieldCheck, AlertCircle } from 'lucide-react';
 import PageContainer from '../../components/common/PageContainer';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -20,22 +8,31 @@ import Modal from '../../components/common/Modal';
 import FeedbackBanner from '../../components/common/FeedbackBanner';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import EmptyState from '../../components/common/EmptyState';
+import SampleDataNotice from '../../components/common/SampleDataNotice';
 import jobService from '../../services/jobService';
 import proposalService from '../../services/proposalService';
 import { useAuth } from '../../hooks/useAuth';
+import { formatCurrency, formatLabel, toINR, toUSD } from '../../utils/formatters';
+
+// The API rejects bids below 5 USD; validate the rupee input against the same floor
+const MIN_BID_USD = 5;
+const MIN_COVER_LETTER = 20;
 
 export const JobDetailPage = () => {
   const { id } = useParams();
   const { isAuthenticated, isFreelancer } = useAuth();
+  const navigate = useNavigate();
   const [job, setJob] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSample, setIsSample] = useState(false);
 
   // Proposal modal state
   const [proposalModalOpen, setProposalModalOpen] = useState(false);
   const [bidAmount, setBidAmount] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('2 weeks');
-  const [proposalSubmitted, setProposalSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
   const [successBanner, setSuccessBanner] = useState('');
   const [proposalError, setProposalError] = useState('');
 
@@ -45,8 +42,10 @@ export const JobDetailPage = () => {
       try {
         const res = await jobService.getJobById(id);
         setJob(res.data);
+        setIsSample(Boolean(res.isSample));
+        // Bids are typed in rupees; prefill with the job's minimum budget converted to INR
         if (res.data?.budgetMin) {
-          setBidAmount(res.data.budgetMin.toString());
+          setBidAmount(String(toINR(res.data.budgetMin)));
         }
       } catch (err) {
         console.error('Failed to load job details:', err);
@@ -73,7 +72,7 @@ export const JobDetailPage = () => {
           title="Job Listing Not Found"
           description={`The requested job '${id}' does not exist or has expired.`}
           actionLabel="Return to Jobs Board"
-          onAction={() => window.location.href = '/jobs'}
+          onAction={() => navigate('/jobs')}
         />
       </PageContainer>
     );
@@ -81,23 +80,44 @@ export const JobDetailPage = () => {
 
   const isFixed = (job.projectType || '').toLowerCase().includes('fixed');
 
+  const isOpen = job.status === 'open';
+  const minBidInr = toINR(MIN_BID_USD);
+
   const handleSubmitProposal = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setProposalError('');
-    setProposalSubmitted(true);
+
+    // Mirror the server's validation so users get a clear message before submitting
+    if (coverLetter.trim().length < MIN_COVER_LETTER) {
+      setProposalError(`Your cover letter must be at least ${MIN_COVER_LETTER} characters.`);
+      return;
+    }
+    if (!(Number(bidAmount) >= minBidInr)) {
+      setProposalError(`Your bid must be at least ${formatCurrency(MIN_BID_USD)}.`);
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       await proposalService.submitProposal({
         jobId: job.id || job._id,
-        coverLetter,
-        bidAmount: Number(bidAmount),
+        coverLetter: coverLetter.trim(),
+        bidAmount: toUSD(bidAmount), // API stores USD
         estimatedDuration: deliveryTime
       });
       setProposalModalOpen(false);
-      setProposalSubmitted(false);
-      setSuccessBanner(`Your proposal of $${bidAmount} was submitted to ${job.client?.name || 'the client'}! You can track its status in your Freelancer Workspace.`);
+      setHasApplied(true);
+      setJob((prev) => ({ ...prev, proposalsCount: (prev.proposalsCount || 0) + 1 }));
+      setSuccessBanner(`Your proposal of ${formatCurrency(toUSD(bidAmount))} was submitted to ${job.client?.name || 'the client'}! You can track its status in your Freelancer Workspace.`);
     } catch (err) {
-      setProposalSubmitted(false);
+      if (err.statusCode === 409) {
+        // Already bid on this job earlier: reflect that instead of letting them retry
+        setHasApplied(true);
+      }
       setProposalError(err.message || 'Failed to submit proposal');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -113,6 +133,8 @@ export const JobDetailPage = () => {
         </nav>
       }
     >
+      <SampleDataNotice show={isSample} />
+
       {successBanner && (
         <FeedbackBanner
           type="success"
@@ -157,7 +179,7 @@ export const JobDetailPage = () => {
               <div>
                 <span className="text-xs text-content-muted block uppercase">Experience</span>
                 <span className="text-sm font-bold text-content-primary mt-0.5 block">
-                  {job.experienceLevel}
+                  {formatLabel(job.experienceLevel)}
                 </span>
               </div>
               <div>
@@ -205,7 +227,7 @@ export const JobDetailPage = () => {
                         </span>
                         <span className="font-semibold text-content-primary">{m.title}</span>
                       </div>
-                      <span className="font-bold text-brand-600">{m.amount}</span>
+                      <span className="font-bold text-brand-600">{formatCurrency(m.amount)}</span>
                     </div>
                   ))}
                 </div>
@@ -222,15 +244,37 @@ export const JobDetailPage = () => {
               <span className="text-2xl font-bold text-content-primary block">{job.budgetDisplay}</span>
             </div>
 
-            <Button
-              variant="primary"
-              fullWidth
-              size="lg"
-              onClick={() => setProposalModalOpen(true)}
-              className="mb-3"
-            >
-              Submit a Proposal
-            </Button>
+            {/* Only signed-in freelancers can bid, and only while the job is open */}
+            {!isOpen ? (
+              <p className="mb-3 p-3 text-xs text-center rounded-md bg-surface-muted border border-border text-content-muted">
+                This job is {formatLabel(job.status).toLowerCase()} and no longer accepting proposals.
+              </p>
+            ) : isSample ? (
+              <p className="mb-3 p-3 text-xs text-center rounded-md bg-surface-muted border border-border text-content-muted">
+                Applying is unavailable while viewing sample listings.
+              </p>
+            ) : !isAuthenticated ? (
+              <Link to={`/login?redirect=${encodeURIComponent(`/jobs/${id}`)}`} className="block mb-3">
+                <Button variant="primary" fullWidth size="lg">
+                  Log In to Apply
+                </Button>
+              </Link>
+            ) : isFreelancer ? (
+              <Button
+                variant="primary"
+                fullWidth
+                size="lg"
+                onClick={() => setProposalModalOpen(true)}
+                disabled={hasApplied}
+                className="mb-3"
+              >
+                {hasApplied ? 'Proposal Submitted' : 'Submit a Proposal'}
+              </Button>
+            ) : (
+              <p className="mb-3 p-3 text-xs text-center rounded-md bg-surface-muted border border-border text-content-muted">
+                Proposals are submitted from freelancer accounts.
+              </p>
+            )}
 
             <p className="text-xs text-content-muted text-center mb-6">
               Activity: {job.proposalsCount} proposals submitted
@@ -242,10 +286,12 @@ export const JobDetailPage = () => {
                 About the Client
               </h3>
 
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-brand-500 shrink-0" />
-                <span className="font-medium text-content-primary">Payment Method Verified</span>
-              </div>
+              {(job.client.isVerified || job.client.verifiedPayment) && (
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-brand-500 shrink-0" />
+                  <span className="font-medium text-content-primary">Verified Client</span>
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <Star className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0" />
@@ -261,7 +307,7 @@ export const JobDetailPage = () => {
 
               <div className="pt-2 border-t border-border-light">
                 <span className="block font-semibold text-content-primary mb-0.5">Total Spent on WorkBridge</span>
-                <span>{job.client.totalSpent}</span>
+                <span>{job.client.totalSpent != null ? `${formatCurrency(job.client.totalSpent)}+` : '-'}</span>
               </div>
             </div>
           </div>
@@ -276,17 +322,7 @@ export const JobDetailPage = () => {
         description={`Submitting bid for "${job.title}"`}
         size="lg"
       >
-        {proposalSubmitted ? (
-          <div className="text-center py-6">
-            <div className="w-12 h-12 rounded-full bg-brand-50 border border-brand-200 text-brand-600 flex items-center justify-center mx-auto mb-3">
-              <Check className="w-6 h-6" />
-            </div>
-            <h3 className="text-base font-bold text-content-primary mb-1">Proposal Submitted!</h3>
-            <p className="text-xs text-content-muted">
-              Your bid has been delivered to {job.client.name}.
-            </p>
-          </div>
-        ) : (
+        {(
           <form onSubmit={handleSubmitProposal} className="space-y-4">
             {proposalError && (
               <div className="p-3 rounded-md bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
@@ -297,7 +333,7 @@ export const JobDetailPage = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 id="bid-amount"
-                label={isFixed ? 'Your Bid Amount ($)' : 'Your Hourly Rate ($/hr)'}
+                label={isFixed ? 'Your Bid Amount (₹)' : 'Your Hourly Rate (₹/hr)'}
                 type="number"
                 value={bidAmount}
                 onChange={(e) => setBidAmount(e.target.value)}
@@ -350,9 +386,9 @@ export const JobDetailPage = () => {
                 variant="primary"
                 size="md"
                 fullWidth
-                disabled={proposalSubmitted}
+                disabled={isSubmitting}
               >
-                {proposalSubmitted ? 'Submitting Proposal...' : 'Submit Proposal'}
+                {isSubmitting ? 'Submitting Proposal...' : 'Submit Proposal'}
               </Button>
             </div>
           </form>

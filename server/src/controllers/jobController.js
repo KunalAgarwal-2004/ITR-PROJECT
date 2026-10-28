@@ -2,6 +2,7 @@ import { Job } from '../models/Job.js';
 import { AppError } from '../utils/appError.js';
 import { successResponse } from '../utils/apiResponse.js';
 import { MARKETPLACE_CATEGORIES } from '../constants/categories.js';
+import { escapeRegExp, queryString, parsePagination } from '../utils/queryHelpers.js';
 
 /**
  * @route   GET /api/jobs
@@ -10,20 +11,20 @@ import { MARKETPLACE_CATEGORIES } from '../constants/categories.js';
  */
 export const getJobs = async (req, res, next) => {
   try {
-    const {
-      search = '',
-      category = 'all',
-      projectType = 'all',
-      experienceLevel = 'all',
-      minBudget,
-      maxBudget,
-      status = 'open',
-      sortBy = 'newest',
-      page = 1,
-      limit = 6
-    } = req.query;
+    // Only plain string query values are honoured (blocks `?status[$ne]=` operator injection)
+    const search = queryString(req.query.search);
+    const category = queryString(req.query.category, 'all');
+    const projectType = queryString(req.query.projectType, 'all');
+    const experienceLevel = queryString(req.query.experienceLevel, 'all');
+    const minBudget = queryString(req.query.minBudget);
+    const maxBudget = queryString(req.query.maxBudget);
+    const status = queryString(req.query.status, 'open');
+    const sortBy = queryString(req.query.sortBy, 'newest');
+    const { page, limit } = req.query;
 
     const query = {};
+    // Independent $or groups (budget, search) are combined with $and so neither overwrites the other
+    const andClauses = [];
 
     // 1. Status Filter (Defaults to 'open' unless specified 'all')
     if (status && status !== 'all') {
@@ -37,7 +38,7 @@ export const getJobs = async (req, res, next) => {
 
     // 3. Project Type Filter
     if (projectType && projectType !== 'all') {
-      query.projectType = new RegExp(`^${projectType}$`, 'i');
+      query.projectType = new RegExp(`^${escapeRegExp(projectType)}$`, 'i');
     }
 
     // 4. Experience Level Filter
@@ -47,10 +48,12 @@ export const getJobs = async (req, res, next) => {
 
     // 5. Budget Filters
     if (minBudget && !isNaN(Number(minBudget))) {
-      query.$or = [
-        { budgetMax: { $gte: Number(minBudget) } },
-        { budgetMin: { $gte: Number(minBudget) } }
-      ];
+      andClauses.push({
+        $or: [
+          { budgetMax: { $gte: Number(minBudget) } },
+          { budgetMin: { $gte: Number(minBudget) } }
+        ]
+      });
     }
     if (maxBudget && !isNaN(Number(maxBudget))) {
       query.budgetMin = { $lte: Number(maxBudget) };
@@ -58,13 +61,19 @@ export const getJobs = async (req, res, next) => {
 
     // 6. Search across title, description, skills
     if (search && search.trim() !== '') {
-      const searchRegex = new RegExp(search.trim(), 'i');
-      query.$or = [
-        { title: searchRegex },
-        { description: searchRegex },
-        { skills: { $in: [searchRegex] } },
-        { categoryName: searchRegex }
-      ];
+      const searchRegex = new RegExp(escapeRegExp(search.trim()), 'i');
+      andClauses.push({
+        $or: [
+          { title: searchRegex },
+          { description: searchRegex },
+          { skills: { $in: [searchRegex] } },
+          { categoryName: searchRegex }
+        ]
+      });
+    }
+
+    if (andClauses.length > 0) {
+      query.$and = andClauses;
     }
 
     // 7. Sorting
@@ -88,9 +97,7 @@ export const getJobs = async (req, res, next) => {
         break;
     }
 
-    const pageNum = Math.max(1, parseInt(page, 10) || 1);
-    const limitNum = Math.max(1, parseInt(limit, 10) || 6);
-    const skip = (pageNum - 1) * limitNum;
+    const { pageNum, limitNum, skip } = parsePagination(page, limit, 6);
 
     const total = await Job.countDocuments(query);
     const totalPages = Math.ceil(total / limitNum) || 1;
@@ -263,11 +270,16 @@ export const updateJob = async (req, res, next) => {
       return next(new AppError('Unauthorized: You can only edit jobs created by your account', 403));
     }
 
+    // Once a contract exists (in-progress) or the job is finished, the posting is locked;
+    // its status is then driven by the project/milestone flow, not by direct edits.
+    if (!['open', 'cancelled'].includes(job.status)) {
+      return next(new AppError(`A job that is ${job.status} can no longer be edited`, 400));
+    }
+
     const updatableFields = [
       'title',
       'description',
       'category',
-      'categoryName',
       'projectType',
       'budgetMin',
       'budgetMax',
@@ -282,6 +294,16 @@ export const updateJob = async (req, res, next) => {
         job[field] = req.body[field];
       }
     });
+
+    // Keep the display name in sync with the category slug
+    if (req.body.category !== undefined) {
+      job.categoryName =
+        MARKETPLACE_CATEGORIES.find(c => c.slug === job.category)?.title || req.body.categoryName || job.category;
+    }
+
+    if (job.budgetMax != null && job.budgetMin != null && job.budgetMax < job.budgetMin) {
+      return next(new AppError('Maximum budget cannot be lower than minimum budget', 400));
+    }
 
     await job.save();
     await job.populate('client', 'name company avatar isVerified');

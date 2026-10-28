@@ -2,6 +2,8 @@ import axios from 'axios';
 
 export const STORAGE_KEY = 'workbridge_user_cache';
 export const TOKEN_KEY = 'workbridge_token';
+// Fired on window when the server rejects the session (401) so AuthContext can log out the UI
+export const AUTH_EXPIRED_EVENT = 'workbridge:auth-expired';
 
 /**
  * Centralized Axios API Service Client
@@ -40,6 +42,11 @@ api.interceptors.response.use(
     if (statusCode === 401 && typeof localStorage !== 'undefined') {
       localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(TOKEN_KEY);
+      // Login attempts with wrong credentials also return 401; they are not a session expiry
+      const isLoginAttempt = /\/auth\/(login|signup|register|google)$/.test(error.config?.url || '');
+      if (!isLoginAttempt && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+      }
     }
 
     const customError = {
@@ -56,5 +63,13 @@ api.interceptors.response.use(
     return Promise.reject(customError);
   }
 );
+
+/**
+ * True when the backend could not serve the request at all (offline, proxy error,
+ * database down, timeout). Only these cases may fall back to bundled sample data;
+ * 4xx errors (bad input, not found, unauthorized) must reach the user.
+ */
+export const isServerUnavailable = (error) =>
+  Boolean(error?.isNetworkError) || error?.statusCode === 408 || (error?.statusCode ?? 0) >= 500;
 
 export default api;

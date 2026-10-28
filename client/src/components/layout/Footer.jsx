@@ -74,7 +74,7 @@ export const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/signup?role=client" className="hover:text-brand-500 transition-colors">
+                <Link to="/legal#escrow" className="hover:text-brand-500 transition-colors">
                   Payment Protection
                 </Link>
               </li>
@@ -115,9 +115,9 @@ export const Footer = () => {
         <div className="mt-12 pt-6 border-t border-border flex flex-col sm:flex-row items-center justify-between text-xs text-content-muted gap-4">
           <p>&copy; {new Date().getFullYear()} WorkBridge Technologies Inc. All rights reserved.</p>
           <div className="flex items-center gap-6">
-            <span className="hover:text-content-primary cursor-pointer">Privacy Policy</span>
-            <span className="hover:text-content-primary cursor-pointer">Terms of Service</span>
-            <span className="hover:text-content-primary cursor-pointer">Escrow Standards</span>
+            <Link to="/legal#privacy" className="hover:text-content-primary">Privacy Policy</Link>
+            <Link to="/legal#terms" className="hover:text-content-primary">Terms of Service</Link>
+            <Link to="/legal#escrow" className="hover:text-content-primary">Escrow Standards</Link>
           </div>
         </div>
       </div>

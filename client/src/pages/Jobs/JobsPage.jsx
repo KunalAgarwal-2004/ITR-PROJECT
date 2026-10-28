@@ -1,16 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Filter, X, SlidersHorizontal, Plus, ArrowUpDown, Clock, DollarSign } from 'lucide-react';
+import { X, SlidersHorizontal, Plus, AlertCircle } from 'lucide-react';
 import PageContainer from '../../components/common/PageContainer';
 import JobCard from '../../components/jobs/JobCard';
 import SearchBar from '../../components/common/SearchBar';
 import Pagination from '../../components/common/Pagination';
 import EmptyState from '../../components/common/EmptyState';
-import LoadingSpinner from '../../components/common/LoadingSpinner';
 import CardSkeleton from '../../components/common/CardSkeleton';
 import Button from '../../components/common/Button';
 import { MARKETPLACE_CATEGORIES } from '../../constants/categories';
 import jobService from '../../services/jobService';
+import SampleDataNotice from '../../components/common/SampleDataNotice';
+import { useAuth } from '../../hooks/useAuth';
+import { useCtaPaths } from '../../hooks/useCtaPaths';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 
 export const JobsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -34,6 +37,26 @@ export const JobsPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [isSample, setIsSample] = useState(false);
+  const { isFreelancer } = useAuth();
+  const cta = useCtaPaths();
+
+  // Typing updates `search` immediately; the API is only queried once typing pauses
+  const debouncedSearch = useDebouncedValue(search, 300);
+
+  // Re-sync filters when the URL changes from outside this page
+  // (e.g. clicking "Find Work" in the header, or browser Back/Forward)
+  const paramsKey = searchParams.toString();
+  useEffect(() => {
+    setCategory(searchParams.get('category') || 'all');
+    setSearch(searchParams.get('search') || '');
+    setPage(parseInt(searchParams.get('page') || '1', 10));
+    setSortBy(searchParams.get('sort') || 'newest');
+    setProjectType(searchParams.get('type') || 'all');
+    setExperienceLevel(searchParams.get('level') || 'all');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramsKey]);
 
   const updateURLParams = (updated = {}) => {
     const params = new URLSearchParams();
@@ -58,9 +81,10 @@ export const JobsPage = () => {
     let isMounted = true;
     const fetchJobs = async () => {
       setIsLoading(true);
+      setLoadError('');
       try {
         const res = await jobService.getJobs({
-          search,
+          search: debouncedSearch,
           category,
           projectType,
           experienceLevel,
@@ -69,13 +93,17 @@ export const JobsPage = () => {
           limit: 6
         });
         if (isMounted) {
-          setJobs(res.data);
+          setJobs(Array.isArray(res.data) ? res.data : []);
           setTotalItems(res.total);
           setTotalPages(res.totalPages);
+          setIsSample(Boolean(res.isSample));
         }
       } catch (err) {
         if (isMounted) {
           console.error('Failed to load jobs:', err);
+          setJobs([]);
+          setTotalItems(0);
+          setLoadError(err.message || 'Unable to load jobs right now.');
         }
       } finally {
         if (isMounted) {
@@ -89,7 +117,7 @@ export const JobsPage = () => {
     return () => {
       isMounted = false;
     };
-  }, [search, category, projectType, experienceLevel, sortBy, page]);
+  }, [debouncedSearch, category, projectType, experienceLevel, sortBy, page]);
 
   const handleSearchSubmit = (val) => {
     setSearch(val);
@@ -132,11 +160,14 @@ export const JobsPage = () => {
       title="Find Remote Freelance Jobs"
       subtitle="Discover open contract opportunities with verified client budgets and milestone escrow protection."
       actions={
-        <Link to="/signup?role=client">
-          <Button variant="primary" size="md" className="gap-1.5">
-            <Plus className="w-4 h-4" /> Post a Job
-          </Button>
-        </Link>
+        // Freelancers can't post jobs; clients go to their dashboard, guests to signup
+        !isFreelancer && (
+          <Link to={cta.postJob}>
+            <Button variant="primary" size="md" className="gap-1.5">
+              <Plus className="w-4 h-4" /> Post a Job
+            </Button>
+          </Link>
+        )
       }
       breadcrumbs={
         <nav className="text-xs text-content-muted flex items-center gap-1.5">
@@ -280,6 +311,15 @@ export const JobsPage = () => {
           </div>
         </div>
       </div>
+
+      <SampleDataNotice show={isSample} />
+
+      {loadError && (
+        <div role="alert" className="mb-6 p-3 rounded-md bg-red-50 border border-red-200 text-xs text-red-700 flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+          <span>{loadError}</span>
+        </div>
+      )}
 
       {/* Results Header */}
       <div className="flex items-center justify-between mb-4 text-xs text-content-muted">

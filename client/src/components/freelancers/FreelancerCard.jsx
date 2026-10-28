@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Star, MapPin, CheckCircle } from 'lucide-react';
 import Button from '../common/Button';
+import { formatCurrency } from '../../utils/formatters';
 
 export const FreelancerCard = ({ freelancer }) => {
   return (
@@ -26,7 +27,7 @@ export const FreelancerCard = ({ freelancer }) => {
             </div>
           </div>
           <div className="text-right shrink-0">
-            <span className="text-base font-bold text-content-primary">${freelancer.hourlyRate}</span>
+            <span className="text-base font-bold text-content-primary">{formatCurrency(freelancer.hourlyRate)}</span>
             <span className="text-xs text-content-muted block">/ hr</span>
           </div>
         </div>

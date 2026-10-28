@@ -5,7 +5,7 @@ import {
   TrendingUp,
   FileText,
   Headphones,
-  DollarSign,
+  IndianRupee,
   Scale,
   Users,
   Compass
@@ -74,7 +74,7 @@ export const MARKETPLACE_CATEGORIES = [
     id: 'finance-accounting',
     slug: 'finance-accounting',
     title: 'Finance & Accounting',
-    icon: DollarSign,
+    icon: IndianRupee,
     description: 'Financial forecasting, corporate tax, bookkeeping, and venture modeling.',
     sampleSkills: ['Financial Modeling', 'QuickBooks', 'Tax Strategy', 'Audit Support'],
     jobCount: '740+ jobs'

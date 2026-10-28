@@ -20,6 +20,7 @@ import Button from '../../components/common/Button';
 import CardSkeleton from '../../components/common/CardSkeleton';
 import freelancerService from '../../services/freelancerService';
 import jobService from '../../services/jobService';
+import { useCtaPaths } from '../../hooks/useCtaPaths';
 
 export const HomePage = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,13 +29,14 @@ export const HomePage = () => {
   const [featuredJobs, setFeaturedJobs] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const cta = useCtaPaths();
 
   useEffect(() => {
     let isMounted = true;
     const fetchFeatured = async () => {
       try {
         const [flRes, jobRes] = await Promise.all([
-          freelancerService.getFreelancers({ limit: 4, sortBy: 'rating' }),
+          freelancerService.getFreelancers({ limit: 4, sortBy: 'rating_desc' }),
           jobService.getJobs({ limit: 4, sortBy: 'newest' })
         ]);
         if (isMounted) {
@@ -205,12 +207,12 @@ export const HomePage = () => {
               </div>
 
               <div className="pt-6 border-t border-border flex items-center justify-between">
-                <Link to="/auth/register?role=client" className="flex-1 mr-2">
+                <Link to={cta.hire} className="flex-1 mr-2">
                   <Button variant="primary" size="sm" fullWidth>
                     Hire Talent
                   </Button>
                 </Link>
-                <Link to="/auth/register?role=freelancer" className="flex-1 ml-2">
+                <Link to={cta.joinAsFreelancer} className="flex-1 ml-2">
                   <Button variant="secondary" size="sm" fullWidth>
                     Apply as Freelancer
                   </Button>
@@ -344,7 +346,7 @@ export const HomePage = () => {
               </ol>
             </div>
 
-            <Link to="/auth/register?role=client">
+            <Link to={cta.postJob}>
               <Button variant="primary" fullWidth size="md">
                 Post a Job — It's Free
               </Button>
@@ -395,7 +397,7 @@ export const HomePage = () => {
               </ol>
             </div>
 
-            <Link to="/auth/register?role=freelancer">
+            <Link to={cta.findWork}>
               <Button variant="secondary" fullWidth size="md">
                 Find Remote Work
               </Button>
@@ -478,12 +480,12 @@ export const HomePage = () => {
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <Link to="/auth/register?role=client">
+              <Link to={cta.hire}>
                 <Button variant="primary" size="lg">
                   Get Started as a Client
                 </Button>
               </Link>
-              <Link to="/auth/register?role=freelancer">
+              <Link to={cta.joinAsFreelancer}>
                 <Button variant="secondary" size="lg">
                   Join as a Freelancer
                 </Button>
