@@ -37,6 +37,7 @@ export const JobDetailPage = () => {
   const [deliveryTime, setDeliveryTime] = useState('2 weeks');
   const [proposalSubmitted, setProposalSubmitted] = useState(false);
   const [successBanner, setSuccessBanner] = useState('');
+  const [proposalError, setProposalError] = useState('');
 
   useEffect(() => {
     const fetchJob = async () => {
@@ -78,9 +79,7 @@ export const JobDetailPage = () => {
     );
   }
 
-  const isFixed = job.projectType.toLowerCase().includes('fixed');
-
-  const [proposalError, setProposalError] = useState('');
+  const isFixed = (job.projectType || '').toLowerCase().includes('fixed');
 
   const handleSubmitProposal = async (e) => {
     e.preventDefault();

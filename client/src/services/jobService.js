@@ -1,5 +1,56 @@
 import api from './api.js';
 import { MOCK_JOBS, getJobById as findMockJobById } from '../data/mockJobs.js';
+import { formatCurrency } from '../utils/formatters.js';
+
+const timeAgo = (date) => {
+  const ms = Date.now() - new Date(date).getTime();
+  if (!date || Number.isNaN(ms) || ms < 0) return 'recently';
+  const mins = Math.floor(ms / 60000);
+  if (mins < 60) return `${Math.max(mins, 1)} min ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? '' : 's'} ago`;
+};
+
+/**
+ * The live API returns raw job fields; the UI also reads display fields that only the
+ * mock data carries. Fill any that are missing so pages never render blank values or crash.
+ */
+const normalizeJob = (job) => {
+  if (!job) return job;
+  const isHourly = (job.projectType || '').toLowerCase().includes('hour');
+  const { budgetMin, budgetMax } = job;
+  let budgetDisplay = job.budgetDisplay;
+  if (!budgetDisplay) {
+    const suffix = isHourly ? '/hr' : '';
+    if (budgetMin != null && budgetMax != null && budgetMin !== budgetMax) {
+      budgetDisplay = `${formatCurrency(budgetMin)} - ${formatCurrency(budgetMax)}${suffix}`;
+    } else if (budgetMin != null || budgetMax != null) {
+      budgetDisplay = `${formatCurrency(budgetMin ?? budgetMax)}${suffix}`;
+    } else {
+      budgetDisplay = 'Budget not specified';
+    }
+  }
+  return {
+    ...job,
+    projectType: job.projectType || 'Fixed-Price',
+    skills: job.skills || [],
+    budgetDisplay,
+    postedTime: job.postedTime || timeAgo(job.postedDate),
+    estimatedDuration: job.estimatedDuration || 'Not specified',
+    experienceLevel: job.experienceLevel || 'Any level',
+    milestones: job.milestones || [],
+    client: {
+      name: 'Verified Client',
+      location: 'Not specified',
+      rating: 'New',
+      reviewsCount: 0,
+      totalSpent: '-',
+      ...job.client
+    }
+  };
+};
 
 /**
  * Job Service Layer
@@ -12,7 +63,7 @@ export const jobService = {
       const res = await api.get('/jobs', { params });
       return {
         success: true,
-        data: res.data,
+        data: Array.isArray(res.data) ? res.data.map(normalizeJob) : res.data,
         total: res.meta?.total || res.data?.length || 0,
         page: res.meta?.page || 1,
         totalPages: res.meta?.totalPages || 1,
@@ -101,7 +152,7 @@ export const jobService = {
       const res = await api.get(`/jobs/${id}`);
       return {
         success: true,
-        data: res.data
+        data: normalizeJob(res.data)
       };
     } catch (error) {
       console.warn(`[Job Service] Live API error fetching ${id}, checking fallback:`, error.message);
@@ -133,7 +184,7 @@ export const jobService = {
       const res = await api.get('/jobs', { params: { limit, sortBy: 'newest' } });
       return {
         success: true,
-        data: res.data?.slice(0, limit) || []
+        data: (res.data?.slice(0, limit) || []).map(normalizeJob)
       };
     } catch (err) {
       return {
