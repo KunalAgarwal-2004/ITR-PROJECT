@@ -145,6 +145,23 @@ describe('Authentication & Authorization Integration Tests', () => {
     assert.equal(res.body.success, false);
   });
 
+  // 8b. A stale cookie must not mask a valid Bearer token
+  it('GET /api/auth/me should accept a valid Bearer token when the cookie is invalid', async () => {
+    const login = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'testclient@example.com', password: 'Password123!' });
+    const token = login.body.data.token;
+    assert.ok(token);
+
+    const res = await request(app)
+      .get('/api/auth/me')
+      .set('Cookie', 'token=stale.invalid.token')
+      .set('Authorization', `Bearer ${token}`);
+
+    assert.equal(res.status, 200);
+    assert.equal(res.body.data.user.email, 'testclient@example.com');
+  });
+
   // 9. Google Authentication Verification Flow
   it('POST /api/auth/google should register and authenticate verified Google account', async () => {
     const res = await request(app)

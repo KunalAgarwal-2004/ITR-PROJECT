@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
 import { USER_ROLES } from '../constants/roles';
 import authService from '../services/authService';
 
@@ -19,13 +19,11 @@ export const AuthContext = createContext({
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => authService.getCurrentUser());
   const [isLoading, setIsLoading] = useState(true);
-  const initializedRef = useRef(false);
 
-  // Restore authenticated session on initial mount
+  // Restore authenticated session on initial mount.
+  // No once-only ref guard: StrictMode remounts, and a guard would leave isLoading stuck at true.
+  // authService.getMe() dedupes concurrent calls, so the remount does not double-fetch.
   useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-
     let isMounted = true;
 
     const restoreSession = async () => {

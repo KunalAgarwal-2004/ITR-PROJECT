@@ -11,31 +11,34 @@ import { User } from '../models/User.js';
  */
 export const protect = async (req, res, next) => {
   try {
-    let token = null;
-
-    // 1. Check HTTP-only cookie first (supports unsigned or signed cookies)
-    if (req.cookies && req.cookies.token) {
-      token = req.cookies.token;
-    } else if (req.signedCookies && req.signedCookies.token) {
-      token = req.signedCookies.token;
-    }
-    // 2. Fallback to Bearer token in Authorization header
-    else if (req.headers.authorization) {
+    // Collect every credential on the request: HTTP-only cookie (unsigned or signed),
+    // then Bearer header. A stale cookie must not mask a valid Bearer token.
+    const candidates = [];
+    if (req.cookies?.token) candidates.push(req.cookies.token);
+    if (req.signedCookies?.token) candidates.push(req.signedCookies.token);
+    if (req.headers.authorization) {
       const parts = req.headers.authorization.trim().split(/\s+/);
       if (parts.length === 2 && /^bearer$/i.test(parts[0])) {
-        token = parts[1];
+        candidates.push(parts[1]);
       }
     }
 
-    if (!token) {
+    if (candidates.length === 0) {
       return next(new AppError('Authentication required. Please log in to proceed.', 401));
     }
 
-    // Verify token signature and expiration
+    // Verify token signature and expiration; the first valid candidate wins
     let decoded;
-    try {
-      decoded = jwt.verify(token, ENV.JWT_SECRET);
-    } catch (jwtErr) {
+    let jwtErr;
+    for (const candidate of candidates) {
+      try {
+        decoded = jwt.verify(candidate, ENV.JWT_SECRET);
+        break;
+      } catch (err) {
+        jwtErr ??= err;
+      }
+    }
+    if (!decoded) {
       if (jwtErr.name === 'TokenExpiredError') {
         return next(new AppError('Your session has expired. Please log in again.', 401));
       }
